@@ -1,6 +1,5 @@
-import pygame
+import pygame, sys
 from settings import *
-from legal_move_finder import *
 
 
 # TODO
@@ -109,26 +108,83 @@ counter = 0
 #pygame setup
 pygame.init() 
 
+def menu():
+    
+    """
+    DESIGN
+    Colour:
+    main: rgb(17,128,26))
+    highlight (dark): rgb(14,105,21)
+    highlight (light): rgb(20,150,30)
+    alt colour (blue): rgb(20,150,30)
+    alt colour (purple): rgb(20,150,30)
+    
+    Menu:
+    horizontal 3rds - (No button), (Button), (No button)
+    vertical 11ths - (Empty), (Title*3), (Empty), (Button), (No button), (Button), (No button), (Button), (No button) Giving 3 buttons equally spaced
+    Background is main
+    button background is #highlight(dark)#
+    button background (selected) is #highlight(light)#
+    title is #alt colour (purple)#
+    
+    
+    """
+    
+    
+    
+    global screen
+    #background or smt
+    width = screen.get_width()
+    height = screen.get_height()
+    background = pygame.draw.rect(screen, (17,128,26), (0,0, width, height))
+    
+    pygame.draw.rect(screen, (14,105,21), (width/3, 5*height/11, width/3, height/11))
+    pygame.draw.rect(screen, (20,150,30), (width/3, 5*height/11, width/3, height/11), 3, 3)
+    
+    pygame.draw.rect(screen, (14,105,21), (width/3, 7*height/11, width/3, height/11))
+    pygame.draw.rect(screen, (20,150,30), (width/3, 7*height/11, width/3, height/11), 3, 3)
+    
+    pygame.draw.rect(screen, (14,105,21), (width/3, 9*height/11, width/3, height/11))
+    pygame.draw.rect(screen, (20,150,30), (width/3, 9*height/11, width/3, height/11), 3, 3)
+
+    #to resize
+    pygame.display.update()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == pygame.VIDEORESIZE:
+            # There's some code to add back window content here.
+            screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+            
+    
+    
+
+
 #board drawing
 def board():
+    width = screen.get_width()
+    height = screen.get_height()
+    
     for i in range(32):
         column = i % 4
         row = i // 4
         if row % 2 == 0:
-            pygame.draw.rect(screen, 'light gray', [600-(column*200),row*100,100,100])
+            pygame.draw.rect(screen, 'light gray', [(width-200)-(column*(width/5)),(height-200)-(column*(width/5)),(width/10), (height/10)])
         else:
             pygame.draw.rect(screen, 'light gray', [700-(column*200),row*100,100,100])
+            
         
     pygame.draw.rect(screen, 'gray', [0,800,WIDTH,100])
     pygame.draw.rect(screen, 'red', [0,800,WIDTH,100],5)
     pygame.draw.rect(screen, 'red', [800,0,200,HEIGHT],5)
         
-    """
+    
     #lines
     for i in range(9):
         pygame.draw.line(screen, 'black', (0, 100*i), (800, 100*i),1)
         pygame.draw.line(screen, 'black', (100*i, 0), (100*i, 800),1)
-    """
+    
       
 #draw pieces
 def pieces():
@@ -167,9 +223,6 @@ def pieces():
 def draw_legal_moves(moves):
     for i in range(len(moves)):
         pygame.draw.circle(screen, "green", (moves[i][0] * 100 + 50, moves[i][1] * 100 + 50), 5)
-        
-        
-
 
 #check options for pieces to move
 def find_moves(pieces, locations, turn):
@@ -205,9 +258,6 @@ def find_moves(pieces, locations, turn):
             
         all_moves.append(moves)
     return all_moves
-
-
-
 
 def check_pinned(check_location):
     """
@@ -300,7 +350,6 @@ def slider_move_loop(location, colour,moves,x,y):
         if new_pin_ray_squares != [] and new_pin_ray_squares not in pin_ray_squares:
             pin_ray_squares.append(new_pin_ray_squares)
     return moves
-
 
 #check for legal rook moves
 def rook_moves(location, colour):
@@ -521,24 +570,17 @@ def pawn_moves(location, colour):
     #en passant
     return moves
 
-
-
 #game loop
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
-run = True
-
-while run:
-    timer.tick(fps)
-    if counter < 30:
-        counter += 1
-    else:
-        counter = 0
+def gameloop():
+    global turn_step, white_pieces, black_pieces, white_locations, black_locations
+    global moves, turn_count, selected_piece, white_moves, black_moves, in_check
     
     screen.fill('dark gray')
     board()
     pieces()
-    
+
     if turn_step < 2:
         all_moves = white_moves
     else:
@@ -548,12 +590,12 @@ while run:
         draw_legal_moves(moves)
     else:
         moves = []
-    
+
     ##print("before event loop")
     #events
     for event in pygame.event.get():      
         if event.type == pygame.QUIT:
-            run = False       
+            run = False  
         
         #if left click
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -642,13 +684,19 @@ while run:
                         white_pieces.pop(white_piece)
                         white_locations.pop(white_piece)
                         white_moved.pop(white_piece)
-    
+
                     selected_piece = 65
                     moves = []
                     turn_step = 0
                     black_moves = find_moves(black_pieces, black_locations, 'black')
                     white_moves = find_moves(white_pieces, white_locations, 'white')
                     turn_count += 1
-                    
+
+
+
+run = True
+while run:
+    menu()
+
     pygame.display.flip()
 pygame.quit()

@@ -1,15 +1,13 @@
 import pygame
 
-width = 900
-height = 900
 
-WIDTH = width
-HEIGHT = height
+WIDTH = 500
+HEIGHT = 500
 
 
 pygame.init()
 
-screen = pygame.display.set_mode([WIDTH, HEIGHT])
+screen = pygame.display.set_mode([WIDTH, HEIGHT], pygame.RESIZABLE)
 pygame.display.set_caption('Le Chess')
 #ygame.display.set_icon(pygame.image.load('assets/images/chess_icon.png'))
 
