@@ -108,6 +108,7 @@ counter = 0
 #pygame setup
 pygame.init() 
 
+
 def menu():
     
     """
@@ -118,6 +119,7 @@ def menu():
     highlight (light): rgb(20,150,30)
     alt colour (blue): rgb(20,150,30)
     alt colour (purple): rgb(20,150,30)
+    #need a couple more I think
     
     Menu:
     horizontal 3rds - (No button), (Button), (No button)
@@ -127,10 +129,10 @@ def menu():
     button background (selected) is #highlight(light)#
     title is #alt colour (purple)#
     
+    #need to have the button change slightly when clicked I think idrk rn
+    
     
     """
-    
-    
     
     global screen
     #background or smt
@@ -138,6 +140,24 @@ def menu():
     height = screen.get_height()
     background = pygame.draw.rect(screen, (17,128,26), (0,0, width, height))
     
+    
+    #fonts
+    font = pygame.font.Font('freesansbold.ttf',(height+width)//64 -2)
+    big_font = pygame.font.Font('freesansbold.ttf',(height+width)//32 -2)
+    coordinate_font = pygame.font.Font('freesansbold.ttf',(height+width)//96 -2) #get font for the A-B, 1-8 on the sides
+    menu_font = pygame.font.Font('freesansbold.ttf',height//14) #get font for the menu
+    menu_font_big = pygame.font.Font('freesansbold.ttf',(height+width)//16) #get font for the menu (like for titles)
+
+
+    
+    #title text
+    menu_font_big.set_bold(True)
+    title_text = menu_font_big.render('CHESSBOT', False, (0, 0, 0))
+    screen.blit(title_text, ((width - title_text.get_width())/2,5))
+    
+    #menu buttons
+    #if mouse is not over any button
+    #menu button outlines
     pygame.draw.rect(screen, (14,105,21), (width/3, 5*height/11, width/3, height/11))
     pygame.draw.rect(screen, (20,150,30), (width/3, 5*height/11, width/3, height/11), 3, 3)
     
@@ -146,7 +166,42 @@ def menu():
     
     pygame.draw.rect(screen, (14,105,21), (width/3, 9*height/11, width/3, height/11))
     pygame.draw.rect(screen, (20,150,30), (width/3, 9*height/11, width/3, height/11), 3, 3)
-
+    
+    
+    mouse_pos = pygame.mouse.get_pos()
+    if mouse_pos[0] > width/3 and mouse_pos[0] < (width/3 + width/3) and mouse_pos[1] > 5*height/11 and mouse_pos[1] < (5*height/11 + height/11):
+        #if mouse is over start button, highlight it
+        pygame.draw.rect(screen, (14,105,21), (width/3, 5*height/11, width/3, height/11), 3, 3)
+        pygame.draw.rect(screen, (20,150,30), (width/3, 5*height/11, width/3, height/11))
+        if pygame.mouse.get_pressed()[0]:
+            #if mouse is clicked, start game
+            print("start game")
+            return "start"
+        
+    elif mouse_pos[0] > width/3 and mouse_pos[0] < (width/3 + width/3) and mouse_pos[1] > 7*height/11 and mouse_pos[1] < (7*height/11 + height/11):
+        #if mouse is over options button, highlight it
+        pygame.draw.rect(screen, (14,105,21), (width/3, 7*height/11, width/3, height/11), 3, 3)
+        pygame.draw.rect(screen, (20,150,30), (width/3, 7*height/11, width/3, height/11))
+        if pygame.mouse.get_pressed()[0]:
+            #if mouse is clicked, open options menu
+            return "options"
+    
+    elif mouse_pos[0] > width/3 and mouse_pos[0] < (width/3 + width/3) and mouse_pos[1] > 9*height/11 and mouse_pos[1] < (9*height/11 + height/11):
+        #if mouse is over dev tools button, highlight it
+        pygame.draw.rect(screen, (14,105,21), (width/3, 9*height/11, width/3, height/11), 3, 3)
+        pygame.draw.rect(screen, (20,150,30), (width/3, 9*height/11, width/3, height/11))
+        if pygame.mouse.get_pressed()[0]:
+            #if mouse is clicked, open dev tools
+            return "dev_tools"
+        
+        
+    dev_tools_button_text = menu_font.render('dev tools', False, (0, 0, 0))
+    screen.blit(dev_tools_button_text, ((width - dev_tools_button_text.get_width())/2, 9 * height/11 + 5))
+    start_button_text = menu_font.render('start', False, (0, 0, 0))
+    screen.blit(start_button_text, ((width - start_button_text.get_width())/2, height * 5/11 + 5))
+    options_button_text = menu_font.render('options', False, (0, 0, 0))
+    screen.blit(options_button_text, ((width - options_button_text.get_width())/2, height * 7/11 + 5))
+    
     #to resize
     pygame.display.update()
     for event in pygame.event.get():
@@ -697,6 +752,26 @@ def gameloop():
 run = True
 while run:
     menu()
+    if menu() == "start":
+        #if start game, run game loop
+        while run:
+            gameloop()
+            
+            pygame.display.update()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+                if event.type == pygame.VIDEORESIZE:
+                    # There's some code to add back window content here.
+                    screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+            
+            
+    elif menu() == "options":
+        # //TODO options menu
+        pygame.quit()
+    elif menu() == "dev_tools":
+        # //TODO dev tools menu
+        pygame.quit()
 
     pygame.display.flip()
 pygame.quit()

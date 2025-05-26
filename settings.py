@@ -1,21 +1,14 @@
 import pygame
 
 
-WIDTH = 500
-HEIGHT = 500
-
+WIDTH = 960
+HEIGHT = 540
 
 pygame.init()
 
 screen = pygame.display.set_mode([WIDTH, HEIGHT], pygame.RESIZABLE)
 pygame.display.set_caption('Le Chess')
 #ygame.display.set_icon(pygame.image.load('assets/images/chess_icon.png'))
-
-font = pygame.font.Font('freesansbold.ttf',20)
-big_font = pygame.font.Font('freesansbold.ttf',50)
-coordinate_font = "" #get font for the A-B, 1-8 on the sides
-menu_font = "" #get font for the menu
-menu_font_big = "" #get font for the menu (like for titles)
 
 timer = pygame.time.Clock()
 fps = 60
