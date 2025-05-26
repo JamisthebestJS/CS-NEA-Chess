@@ -76,6 +76,7 @@ EVALUATING A POSITION
 For making better, allow multiple look-ahead moves. 2 is 4x better than 1, 3 is 3.5x better than 2, etc. But careful of moves taking too long.
     - this will be v. v. tough due to having to also predict your moves, however, as long as it looks for your best move also, it should just make solid moves, rather than having you like blunder smt, and it thinking ohhhhh yhhhh
 """
+
 #game variables
 white_pieces = ["rook","knight", "bishop", "king", "queen", "bishop", "knight", "rook",
                 "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"]
@@ -220,29 +221,77 @@ def menu():
 def board():
     width = screen.get_width()
     height = screen.get_height()
-    
-    for i in range(32):
-        column = i % 4
-        row = i // 4
-        if row % 2 == 0:
-            pygame.draw.rect(screen, 'light gray', [(width-200)-(column*(width/5)),(height-200)-(column*(width/5)),(width/10), (height/10)])
-        else:
-            pygame.draw.rect(screen, 'light gray', [700-(column*200),row*100,100,100])
+
+    #to ensure gameboard is square
+    b = min(width, height)/5
+    a=b
+    board_size = min(width, height) - a
+    if width > height:
+        width_greater = True
+        height_greater = False
+        a = width - (board_size)
+    elif height > width:
+        height_greater = True
+        width_greater = False
+        b = height - (board_size)
+    else:
+        same = True
+    #pretty sure ^^ all works
+
+    # //FIXME get square drawing working
+    if width_greater:
+        for i in range(16): #rows
+            if i % 2 == 0:
+                for j in range(4): #squares
+                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2) * (board_size / 8)), 2*(i // 4) * (board_size / 8), board_size / 8, board_size / 8 ])
+            else:
+                for j in range(4):
+                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2 + 1) * (board_size / 8)), (2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    
+    elif height_greater:
+        for i in range(16):
+            if i % 2 == 0:
+                for j in range(4): #squares
+                    pygame.draw.rect(screen, 'light gray', [(j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
+            else:
+                for j in range(4):
+                    pygame.draw.rect(screen, 'light gray', [(j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
+    else:
+        for i in range(16):
+            if i % 2 == 0:
+                for j in range(4): #squares
+                    pygame.draw.rect(screen, 'light gray', [((j*2) * (board_size / 8)), 2*(i // 4) * (board_size / 8), board_size / 8, board_size / 8 ])
+            else:
+                for j in range(4):
+                    pygame.draw.rect(screen, 'light gray', [((j*2 + 1) * (board_size / 8)), (2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
             
-        
-    pygame.draw.rect(screen, 'gray', [0,800,WIDTH,100])
-    pygame.draw.rect(screen, 'red', [0,800,WIDTH,100],5)
-    pygame.draw.rect(screen, 'red', [800,0,200,HEIGHT],5)
-        
-    
-    #lines
+    #draw margin lines
+           
+    """
+    #board lines
+    # //FIXME get board lines working
     for i in range(9):
-        pygame.draw.line(screen, 'black', (0, 100*i), (800, 100*i),1)
-        pygame.draw.line(screen, 'black', (100*i, 0), (100*i, 800),1)
-    
+        pygame.draw.line(screen, 'black',(), () ,1)
+        pygame.draw.line(screen, 'black',(), () ,1)
+    """
       
 #draw pieces
 def pieces():
+    w = screen.get_width()
+    h = screen.get_height()
+    # //FIXME get scaling piece images working. rn, not working right 
+    pygame.transform.scale(white_pawn, (w, h))
+    pygame.transform.scale(black_pawn, (w, h))
+    pygame.transform.scale(white_king, (w, h))
+    pygame.transform.scale(black_king, (w, h))
+    pygame.transform.scale(white_queen, (w, h))
+    pygame.transform.scale(black_queen, (w, h))
+    pygame.transform.scale(white_rook, (w, h))
+    pygame.transform.scale(black_rook, (w, h))
+    pygame.transform.scale(white_bishop, (w, h))
+    pygame.transform.scale(black_bishop, (w, h))
+    pygame.transform.scale(white_knight, (w, h))
+    pygame.transform.scale(black_knight, (w, h))
 
     #white pieces
     for i in range(len(white_pieces)):
@@ -629,28 +678,31 @@ def pawn_moves(location, colour):
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
-    global turn_step, white_pieces, black_pieces, white_locations, black_locations
-    global moves, turn_count, selected_piece, white_moves, black_moves, in_check
-    
-    screen.fill('dark gray')
-    board()
-    pieces()
+    global run
+    if run:
+        global turn_step, white_pieces, black_pieces, white_locations, black_locations
+        global moves, turn_count, selected_piece, white_moves, black_moves, in_check
+        
+        screen.fill('dark gray')
+        board()
+        pieces()
 
-    if turn_step < 2:
-        all_moves = white_moves
-    else:
-        all_moves = black_moves
-    if selected_piece != 65 and 0 <= selected_piece < len(all_moves):
-        moves = all_moves[selected_piece]
-        draw_legal_moves(moves)
-    else:
-        moves = []
+        if turn_step < 2:
+            all_moves = white_moves
+        else:
+            all_moves = black_moves
+        if selected_piece != 65 and 0 <= selected_piece < len(all_moves):
+            moves = all_moves[selected_piece]
+            draw_legal_moves(moves)
+        else:
+            moves = []
 
     ##print("before event loop")
     #events
-    for event in pygame.event.get():      
+    for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            run = False  
+            run = False
+            pygame.quit()
         
         #if left click
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -755,15 +807,15 @@ while run:
     if menu() == "start":
         #if start game, run game loop
         while run:
-            gameloop()
-            
             pygame.display.update()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    run = False
+                    pygame.quit()
                 if event.type == pygame.VIDEORESIZE:
                     # There's some code to add back window content here.
                     screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+            gameloop()
+           
             
             
     elif menu() == "options":
@@ -773,5 +825,5 @@ while run:
         # //TODO dev tools menu
         pygame.quit()
 
-    pygame.display.flip()
+           
 pygame.quit()
