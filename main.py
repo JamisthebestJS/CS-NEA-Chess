@@ -77,6 +77,73 @@ For making better, allow multiple look-ahead moves. 2 is 4x better than 1, 3 is 
     - this will be v. v. tough due to having to also predict your moves, however, as long as it looks for your best move also, it should just make solid moves, rather than having you like blunder smt, and it thinking ohhhhh yhhhh
 """
 
+pygame.init()
+
+screen = pygame.display.set_mode([WIDTH, HEIGHT], pygame.RESIZABLE)
+pygame.display.set_caption('Le Chess')
+#ygame.display.set_icon(pygame.image.load('assets/images/chess_icon.png'))
+
+timer = pygame.time.Clock()
+fps = 60
+
+#asset laoding
+# load in game piece images (queen, king, rook, bishop, knight, pawn) x 2
+#NOTE: need to get some decent images
+black_queen = pygame.image.load('assets/images/black queen.png')
+#black_queen = pygame.transform.scale(black_queen, (200, 200))
+small_black_queen = pygame.transform.scale(black_queen, (100, 100))
+black_king = pygame.image.load('assets/images/black king.png')
+#black_king = pygame.transform.scale(black_king, (200, 200))
+small_black_king = pygame.transform.scale(black_king, (100, 100))
+black_rook = pygame.image.load('assets/images/black rook.png')
+#black_rook = pygame.transform.scale(black_rook, (200, 200))
+small_black_rook = pygame.transform.scale(black_rook, (100, 100))
+black_bishop = pygame.image.load('assets/images/black bishop.png')
+#black_bishop = pygame.transform.scale(black_bishop, (200, 200))
+small_black_bishop = pygame.transform.scale(black_bishop, (100, 100))
+black_knight = pygame.image.load('assets/images/black knight.png')
+##=black_knight = pygame.transform.scale(black_knight, (200, 200))
+small_black_knight = pygame.transform.scale(black_knight, (100, 100))
+black_pawn = pygame.image.load('assets/images/black pawn.png')
+#black_pawn = pygame.transform.scale(black_pawn, (200, 200))
+small_black_pawn = pygame.transform.scale(black_pawn, (100, 100))
+white_queen = pygame.image.load('assets/images/white queen.png')
+#white_queen = pygame.transform.scale(white_queen, (200, 200))
+small_white_queen = pygame.transform.scale(white_queen, (100, 100))
+white_king = pygame.image.load('assets/images/white king.png')
+#white_king = pygame.transform.scale(white_king, (200, 200))
+small_white_king = pygame.transform.scale(white_king, (100, 100))
+white_rook = pygame.image.load('assets/images/white rook.png')
+#white_rook = pygame.transform.scale(white_rook, (200, 200))
+small_white_rook = pygame.transform.scale(white_rook, (100, 100))
+white_bishop = pygame.image.load('assets/images/white bishop.png')
+#white_bishop = pygame.transform.scale(white_bishop, (200, 200))
+small_white_bishop = pygame.transform.scale(white_bishop, (100, 100))
+white_knight = pygame.image.load('assets/images/white knight.png')
+#white_knight = pygame.transform.scale(white_knight, (200, 200))
+small_white_knight = pygame.transform.scale(white_knight, (100, 100))
+white_pawn = pygame.image.load('assets/images/white pawn.png')
+#white_pawn = pygame.transform.scale(white_pawn, (200, 200))
+small_white_pawn = pygame.transform.scale(white_pawn, (100, 100))
+white_images = [white_pawn, white_queen, white_king, white_knight, white_rook, white_bishop]
+white_promotions = ['bishop', 'knight', 'rook', 'queen']
+white_moved = [False, False, False, False, False, False, False, False,
+               False, False, False, False, False, False, False, False]
+small_white_images = [small_white_pawn, small_white_queen, small_white_king, small_white_knight,
+                      small_white_rook, small_white_bishop]
+black_images = [black_pawn, black_queen, black_king, black_knight, black_rook, black_bishop]
+small_black_images = [small_black_pawn, small_black_queen, small_black_king, small_black_knight,
+                      small_black_rook, small_black_bishop]
+black_promotions = ['bishop', 'knight', 'rook', 'queen']
+black_moved = [False, False, False, False, False, False, False, False,
+               False, False, False, False, False, False, False, False]
+piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
+
+all_locations = []
+black_in_check = False
+white_in_check = False
+
+
 #game variables
 white_pieces = ["rook","knight", "bishop", "king", "queen", "bishop", "knight", "rook",
                 "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"]
@@ -104,10 +171,6 @@ in_check_by = []
 in_check = False
 pinned_pieces = []
 
-#counter
-counter = 0
-#pygame setup
-pygame.init() 
 
 
 def menu():
@@ -117,7 +180,7 @@ def menu():
     Colour:
     main: rgb(17,128,26))
     highlight (dark): rgb(14,105,21)
-    highlight (light): rgb(20,150,30)
+    highlight (light): rgb(20,150,30)6
     alt colour (blue): rgb(20,150,30)
     alt colour (purple): rgb(20,150,30)
     #need a couple more I think
@@ -209,6 +272,7 @@ def menu():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+            run = False
         if event.type == pygame.VIDEORESIZE:
             # There's some code to add back window content here.
             screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
@@ -238,7 +302,6 @@ def board():
         same = True
     #pretty sure ^^ all works
 
-    # //FIXME get square drawing working
     if width_greater:
         for i in range(16): #rows
             if i % 2 == 0:
@@ -270,6 +333,7 @@ def board():
     """
     #board lines
     # //FIXME get board lines working
+    # may be an idea to get offset values from above if statements, and basically add that to the incrementing values as it works its way down and across the board
     for i in range(9):
         pygame.draw.line(screen, 'black',(), () ,1)
         pygame.draw.line(screen, 'black',(), () ,1)
@@ -277,56 +341,64 @@ def board():
       
 #draw pieces
 def pieces():
+    
     w = screen.get_width()
     h = screen.get_height()
-    # //FIXME get scaling piece images working. rn, not working right 
-    pygame.transform.scale(white_pawn, (w, h))
-    pygame.transform.scale(black_pawn, (w, h))
-    pygame.transform.scale(white_king, (w, h))
-    pygame.transform.scale(black_king, (w, h))
-    pygame.transform.scale(white_queen, (w, h))
-    pygame.transform.scale(black_queen, (w, h))
-    pygame.transform.scale(white_rook, (w, h))
-    pygame.transform.scale(black_rook, (w, h))
-    pygame.transform.scale(white_bishop, (w, h))
-    pygame.transform.scale(black_bishop, (w, h))
-    pygame.transform.scale(white_knight, (w, h))
-    pygame.transform.scale(black_knight, (w, h))
-
+    board_size = min(w, h) * 4/5
+    piece_size = board_size / 8
+    
+    scaled_white_pawn = pygame.transform.smoothscale(white_pawn, (piece_size, piece_size))
+    scaled_black_pawn = pygame.transform.smoothscale(black_pawn, (piece_size, piece_size))
+    scaled_white_king = pygame.transform.smoothscale(white_king, (piece_size, piece_size))
+    scaled_black_king = pygame.transform.smoothscale(black_king, (piece_size, piece_size))
+    scaled_white_queen = pygame.transform.smoothscale(white_queen, (piece_size, piece_size))
+    scaled_black_queen = pygame.transform.smoothscale(black_queen, (piece_size, piece_size))  
+    scaled_white_rook = pygame.transform.smoothscale(white_rook, (piece_size, piece_size))
+    scaled_black_rook = pygame.transform.smoothscale(black_rook, (piece_size, piece_size))
+    scaled_white_bishop = pygame.transform.smoothscale(white_bishop, (piece_size, piece_size))
+    scaled_black_bishop = pygame.transform.smoothscale(black_bishop, (piece_size, piece_size))
+    scaled_white_knight = pygame.transform.smoothscale(white_knight, (piece_size, piece_size))
+    scaled_black_knight = pygame.transform.smoothscale(black_knight, (piece_size, piece_size))
+    scaled_white_images = [scaled_white_pawn, scaled_white_queen, scaled_white_king, scaled_white_knight, scaled_white_rook, scaled_white_bishop]
+    scaled_black_images = [scaled_black_pawn, scaled_black_queen, scaled_black_king, scaled_black_knight, scaled_black_rook, scaled_black_bishop]
+    
+    # //FIXME piece placement
     #white pieces
     for i in range(len(white_pieces)):
         index = piece_list.index(white_pieces[i])
         if white_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(white_pawn,(white_locations[i][0] * 100 + 17, white_locations[i][1] * 100 + 30))
+            screen.blit(scaled_white_pawn,(white_locations[i][0] * piece_size + 17, white_locations[i][1] * piece_size + 30))
         else:
-            screen.blit(white_images[index],(white_locations[i][0] * 100 + 10, white_locations[i][1] * 100 + 10))
+            screen.blit(scaled_white_images[index],(white_locations[i][0] * piece_size + 10, white_locations[i][1] * piece_size + 10))
         
         #selecting "animation"
         if turn_step < 2:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [white_locations[i][0] * 100 + 1, white_locations[i][1] * 100 + 1, 100, 100], 2)
+                pygame.draw.rect(screen, 'green', [white_locations[i][0] * piece_size + 1, white_locations[i][1] * piece_size + 1, piece_size, piece_size], 2)
     
     #black pieces
     for i in range(len(black_pieces)):
         index = piece_list.index(black_pieces[i])
         if black_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(black_pawn,(black_locations[i][0] * 100 + 22, black_locations[i][1] * 100 + 30))
+            screen.blit(scaled_black_pawn,(black_locations[i][0] * piece_size + 22, black_locations[i][1] * piece_size + 30))
         else:
-            screen.blit(black_images[index],(black_locations[i][0] * 100 + 10, black_locations[i][1] * 100 + 10))
+            screen.blit(scaled_black_images[index],(black_locations[i][0] * piece_size + 10, black_locations[i][1] * piece_size + 10))
 
         #selecting "animation"
         if turn_step > 1:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [black_locations[i][0] * 100 + 1, black_locations[i][1] * 100 + 1, 100, 100], 2)
+                pygame.draw.rect(screen, 'green', [black_locations[i][0] * piece_size + 1, black_locations[i][1] * piece_size + 1, piece_size, piece_size], 2)
                 
 #drawing valid movses
 def draw_legal_moves(moves):
+    # //FIXME piece_size is not defined here, so idl, maybe switch up some ordering
+    global piece_size
     for i in range(len(moves)):
-        pygame.draw.circle(screen, "green", (moves[i][0] * 100 + 50, moves[i][1] * 100 + 50), 5)
+        pygame.draw.circle(screen, "green", (moves[i][0] * piece_size + 50, moves[i][1] * piece_size + 50), 5)
 
 #check options for pieces to move
 def find_moves(pieces, locations, turn):
@@ -810,6 +882,7 @@ while run:
             pygame.display.update()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    run = False
                     pygame.quit()
                 if event.type == pygame.VIDEORESIZE:
                     # There's some code to add back window content here.
@@ -821,9 +894,11 @@ while run:
     elif menu() == "options":
         # //TODO options menu
         pygame.quit()
+        run = False
     elif menu() == "dev_tools":
         # //TODO dev tools menu
         pygame.quit()
+        run = False
 
            
 pygame.quit()
