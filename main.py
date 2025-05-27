@@ -277,15 +277,14 @@ def menu():
             # There's some code to add back window content here.
             screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
             
-    
-    
-
 
 #board drawing
 def board():
     width = screen.get_width()
     height = screen.get_height()
-
+    global x_offset
+    global y_offset
+    
     #to ensure gameboard is square
     b = min(width, height)/5
     a=b
@@ -300,9 +299,13 @@ def board():
         b = height - (board_size)
     else:
         same = True
+        width_greater = False
+        height_greater = False
     #pretty sure ^^ all works
 
     if width_greater:
+        x_offset = a/2
+        y_offset = 0
         for i in range(16): #rows
             if i % 2 == 0:
                 for j in range(4): #squares
@@ -310,8 +313,11 @@ def board():
             else:
                 for j in range(4):
                     pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2 + 1) * (board_size / 8)), (2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
+            
                     
     elif height_greater:
+        x_offset = 0
+        y_offset = b/2
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
@@ -320,6 +326,8 @@ def board():
                 for j in range(4):
                     pygame.draw.rect(screen, 'light gray', [(j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
     else:
+        x_offset = 0
+        y_offset = 0
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
@@ -345,14 +353,16 @@ def pieces():
     w = screen.get_width()
     h = screen.get_height()
     board_size = min(w, h) * 4/5
-    piece_size = board_size / 8
+    global piece_size
+    piece_size = board_size / 10 #(not /8 since should fit nicely in square, not be the exact same size as the square)
+    pawn_piece_size = piece_size * 13/16
     
-    scaled_white_pawn = pygame.transform.smoothscale(white_pawn, (piece_size, piece_size))
-    scaled_black_pawn = pygame.transform.smoothscale(black_pawn, (piece_size, piece_size))
+    scaled_white_pawn = pygame.transform.smoothscale(white_pawn, (pawn_piece_size, pawn_piece_size))
+    scaled_black_pawn = pygame.transform.smoothscale(black_pawn, (pawn_piece_size, pawn_piece_size))
     scaled_white_king = pygame.transform.smoothscale(white_king, (piece_size, piece_size))
     scaled_black_king = pygame.transform.smoothscale(black_king, (piece_size, piece_size))
     scaled_white_queen = pygame.transform.smoothscale(white_queen, (piece_size, piece_size))
-    scaled_black_queen = pygame.transform.smoothscale(black_queen, (piece_size, piece_size))  
+    scaled_black_queen = pygame.transform.smoothscale(black_queen, (piece_size, piece_size))
     scaled_white_rook = pygame.transform.smoothscale(white_rook, (piece_size, piece_size))
     scaled_black_rook = pygame.transform.smoothscale(black_rook, (piece_size, piece_size))
     scaled_white_bishop = pygame.transform.smoothscale(white_bishop, (piece_size, piece_size))
@@ -363,42 +373,44 @@ def pieces():
     scaled_black_images = [scaled_black_pawn, scaled_black_queen, scaled_black_king, scaled_black_knight, scaled_black_rook, scaled_black_bishop]
     
     # //FIXME piece placement
+    #use x, y offsets, add to current placements. Not sure if current offsets will work, but easiest to figure them out above, since already have if statements there.
+    #If turns out deoesnt work bc of functions then oh well
     #white pieces
     for i in range(len(white_pieces)):
         index = piece_list.index(white_pieces[i])
         if white_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_white_pawn,(white_locations[i][0] * piece_size + 17, white_locations[i][1] * piece_size + 30))
+            screen.blit(scaled_white_pawn,(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.2) * board_size/8)))
         else:
-            screen.blit(scaled_white_images[index],(white_locations[i][0] * piece_size + 10, white_locations[i][1] * piece_size + 10))
+            screen.blit(scaled_white_images[index],(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.1) * board_size/8)))
         
         #selecting "animation"
         if turn_step < 2:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [white_locations[i][0] * piece_size + 1, white_locations[i][1] * piece_size + 1, piece_size, piece_size], 2)
+                pygame.draw.rect(screen, 'green', [x_offset + (white_locations[i][0] * board_size/8 + 1), y_offset + (white_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
     
     #black pieces
     for i in range(len(black_pieces)):
         index = piece_list.index(black_pieces[i])
         if black_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_black_pawn,(black_locations[i][0] * piece_size + 22, black_locations[i][1] * piece_size + 30))
+            screen.blit(scaled_black_pawn,(x_offset + ((black_locations[i][0]+0.1) * board_size/8 + piece_size/7), y_offset + ((black_locations[i][1]+0.2) * board_size/8)))
         else:
-            screen.blit(scaled_black_images[index],(black_locations[i][0] * piece_size + 10, black_locations[i][1] * piece_size + 10))
+            screen.blit(scaled_black_images[index],(x_offset + ((black_locations[i][0]+0.1) * board_size/8), y_offset + ((black_locations[i][1]+0.1) * board_size/8)))
 
         #selecting "animation"
         if turn_step > 1:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [black_locations[i][0] * piece_size + 1, black_locations[i][1] * piece_size + 1, piece_size, piece_size], 2)
+                pygame.draw.rect(screen, 'green', [x_offset + (black_locations[i][0] * board_size/8 + 1), y_offset + (black_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
                 
 #drawing valid movses
 def draw_legal_moves(moves):
     # //FIXME piece_size is not defined here, so idl, maybe switch up some ordering
     global piece_size
     for i in range(len(moves)):
-        pygame.draw.circle(screen, "green", (moves[i][0] * piece_size + 50, moves[i][1] * piece_size + 50), 5)
+        pygame.draw.circle(screen, "green", (x_offset + (moves[i][0] * (piece_size*5/4) + 50), y_offset + (moves[i][1] * (piece_size*5/4) + 50)), 5)
 
 #check options for pieces to move
 def find_moves(pieces, locations, turn):
@@ -546,6 +558,7 @@ def rook_moves(location, colour):
         return moves
     elif pinned_by != (): #if pinned by 1 piece
         # //TODO get while_pinned moves R
+        # it also only needs to check if *itself* is pinned
         for i in range(len(pinned_pieces)):
             pinning_piece = pinned_pieces[i][1]
             if opposite_pieces(opposite_colour_locations.index(pinning_piece)) == "rook":
@@ -779,8 +792,8 @@ def gameloop():
         #if left click
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             #pixel clicked on window // 100 => square clicked on
-            x_coord = event.pos[0] // 100 
-            y_coord = event.pos[1] // 100
+            x_coord = (event.pos[0] - x_offset) // (piece_size * 5/4)
+            y_coord = (event.pos[1] - y_offset) // (piece_size * 5/4)
             click_coord = (x_coord, y_coord)
             ##print("left click")
             
