@@ -1,6 +1,7 @@
 import pygame, sys
 from settings import *
-
+from get_moves import *
+from engine import evaluate_position
 
 # TODO
 # - en passant checker for pawn moves
@@ -127,49 +128,16 @@ white_pawn = pygame.image.load('assets/images/white pawn.png')
 small_white_pawn = pygame.transform.scale(white_pawn, (100, 100))
 white_images = [white_pawn, white_queen, white_king, white_knight, white_rook, white_bishop]
 white_promotions = ['bishop', 'knight', 'rook', 'queen']
-white_moved = [False, False, False, False, False, False, False, False,
-               False, False, False, False, False, False, False, False]
+
 small_white_images = [small_white_pawn, small_white_queen, small_white_king, small_white_knight,
                       small_white_rook, small_white_bishop]
 black_images = [black_pawn, black_queen, black_king, black_knight, black_rook, black_bishop]
 small_black_images = [small_black_pawn, small_black_queen, small_black_king, small_black_knight,
                       small_black_rook, small_black_bishop]
 black_promotions = ['bishop', 'knight', 'rook', 'queen']
-black_moved = [False, False, False, False, False, False, False, False,
-               False, False, False, False, False, False, False, False]
+
 piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 
-all_locations = []
-black_in_check = False
-white_in_check = False
-
-
-#game variables
-white_pieces = ["rook","knight", "bishop", "king", "queen", "bishop", "knight", "rook",
-                "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"]
-white_locations = [(0,0),(1,0),(2,0),(3,0),(4,0),(5,0),(6,0),(7,0),
-                   (0,1),(1,1),(2,1),(3,1),(4,1),(5,1),(6,1),(7,1)]
-
-black_pieces = ["rook","knight", "bishop", "king", "queen", "bishop", "knight", "rook",
-                "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn", "pawn"]
-black_locations = [(0,7),(1,7),(2,7),(3,7),(4,7),(5,7),(6,7),(7,7),
-                   (0,6),(1,6),(2,6),(3,6),(4,6),(5,6),(6,6),(7,6)]
-
-taken_by_white_pieces = []
-taken_by_black_pieces = []
-white_moves = []
-black_moves = []
-
-# 0 is white to play, 1 is white piece selected, 2 is black to play, 3 is black piece selected
-turn_step = 0
-turn_count = 0 #total mvoves made, (total turn_steps / 2)
-selected_piece = 65
-
-pin_ray_squares = []
-#if 1 piece giving check, can block it
-in_check_by = []
-in_check = False
-pinned_pieces = []
 
 
 
@@ -204,11 +172,14 @@ def menu():
     height = screen.get_height()
     background = pygame.draw.rect(screen, (17,128,26), (0,0, width, height))
     
-    
+        
     #fonts
-    font = pygame.font.Font('freesansbold.ttf',(height+width)//64 -2)
-    big_font = pygame.font.Font('freesansbold.ttf',(height+width)//32 -2)
-    coordinate_font = pygame.font.Font('freesansbold.ttf',(height+width)//96 -2) #get font for the A-B, 1-8 on the sides
+    #must be here despite performance due to having to be able to resize the window
+    #cannot resize fonts, so have to recreate them each time
+    font = pygame.font.Font('freesansbold.ttf',(height+width)//64)
+    big_font = pygame.font.Font('freesansbold.ttf',(height+width)//32)
+    global coordinate_font
+    coordinate_font = pygame.font.Font('freesansbold.ttf',(height+width)//96) #get font for the A-B, 1-8 on the sides
     menu_font = pygame.font.Font('freesansbold.ttf',height//14) #get font for the menu
     menu_font_big = pygame.font.Font('freesansbold.ttf',(height+width)//16) #get font for the menu (like for titles)
 
@@ -305,48 +276,52 @@ def board():
 
     if width_greater:
         x_offset = a/2
-        y_offset = 0
+        y_offset = b/2
         for i in range(16): #rows
             if i % 2 == 0:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2) * (board_size / 8)), 2*(i // 4) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2) * (board_size / 8)), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2 + 1) * (board_size / 8)), (2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2 + 1) * (board_size / 8)), (b/2)+(2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
             
                     
     elif height_greater:
-        x_offset = 0
+        x_offset = board_size/40
         y_offset = b/2
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [(j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [(j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
     else:
-        x_offset = 0
-        y_offset = 0
+        x_offset = board_size/40
+        y_offset = b/2
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [((j*2) * (board_size / 8)), 2*(i // 4) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [((j*2 + 1) * (board_size / 8)), (2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
             
     #draw margin lines
            
-    """
     #board lines
-    # //FIXME get board lines working
-    # may be an idea to get offset values from above if statements, and basically add that to the incrementing values as it works its way down and across the board
     for i in range(9):
-        pygame.draw.line(screen, 'black',(), () ,1)
-        pygame.draw.line(screen, 'black',(), () ,1)
-    """
-      
+        #edge lines are thicker
+        if i == 0 or i == 8:
+            line_width = 2
+        else:
+            line_width = 1
+        #draw vertical lines
+        pygame.draw.line(screen, 'black',(x_offset + (i * board_size/8), y_offset), (x_offset + (i * board_size/8), y_offset + board_size) , line_width)
+        #draw horizontal lines
+        pygame.draw.line(screen, 'black',(x_offset, y_offset + (i * board_size/8)), (x_offset + board_size, y_offset + (i * board_size/8)) , line_width)
+    
+
 #draw pieces
 def pieces():
     
@@ -371,16 +346,13 @@ def pieces():
     scaled_black_knight = pygame.transform.smoothscale(black_knight, (piece_size, piece_size))
     scaled_white_images = [scaled_white_pawn, scaled_white_queen, scaled_white_king, scaled_white_knight, scaled_white_rook, scaled_white_bishop]
     scaled_black_images = [scaled_black_pawn, scaled_black_queen, scaled_black_king, scaled_black_knight, scaled_black_rook, scaled_black_bishop]
-    
-    # //FIXME piece placement
-    #use x, y offsets, add to current placements. Not sure if current offsets will work, but easiest to figure them out above, since already have if statements there.
-    #If turns out deoesnt work bc of functions then oh well
+
     #white pieces
     for i in range(len(white_pieces)):
         index = piece_list.index(white_pieces[i])
         if white_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_white_pawn,(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.2) * board_size/8)))
+            screen.blit(scaled_white_pawn,(x_offset + ((white_locations[i][0]+0.175) * board_size/8), y_offset + ((white_locations[i][1]+0.2) * board_size/8)))
         else:
             screen.blit(scaled_white_images[index],(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.1) * board_size/8)))
         
@@ -404,373 +376,67 @@ def pieces():
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
                 pygame.draw.rect(screen, 'green', [x_offset + (black_locations[i][0] * board_size/8 + 1), y_offset + (black_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
-                
+
+#drawing material taken
+def draw_material():
+    # //TODO draw material taken
+    #this should draw the material taken by each player, in a list, with the total material worth
+    #it should be draw on the correct side (above/below)
+    return 0       
 #drawing valid movses
 def draw_legal_moves(moves):
-    # //FIXME piece_size is not defined here, so idl, maybe switch up some ordering
     global piece_size
+    # //FIXME at small window sizes, these are offset drastically
+    #it also happens at larger sizes, just less noticably
     for i in range(len(moves)):
-        pygame.draw.circle(screen, "green", (x_offset + (moves[i][0] * (piece_size*5/4) + 50), y_offset + (moves[i][1] * (piece_size*5/4) + 50)), 5)
+        pygame.draw.circle(screen, "green", (x_offset + piece_size/8+ (moves[i][0] * (piece_size*5/4) + 50), y_offset + (moves[i][1] * (piece_size*5/4) + 50)), 5)
 
-#check options for pieces to move
-def find_moves(pieces, locations, turn):
-    ##print("finding moves")
-    moves = []
-    all_moves = []
-
-    #for every piece, finds their moves
-    for i in range(len(pieces)):
-        
-        location = locations[i]
-        ##print("location", location)
-        piece = pieces[i]
-        ##print("piece", piece)
-
-        if piece == "pawn":
-            moves = pawn_moves(location, turn)
-        
-        elif piece == "rook":
-            moves = rook_moves(location, turn)
-        
-        elif piece == "knight":
-            moves = knight_moves(location, turn)
-        
-        elif piece == "bishop":
-            moves = bishop_moves(location, turn)
-
-        elif piece == "queen":
-            moves = queen_moves(location, turn)
-
-        elif piece == "king":
-            moves = king_moves(location, turn)
-            
-        all_moves.append(moves)
-    return all_moves
-
-def check_pinned(check_location):
-    """
-    if piece is pinned, returns the piece that is pinning it
-    if more than 1 piece pinning, returns (9,9) 
-    if not pinned, returns ()
-    """
-    pinned = False
-    pinning_pieces = 0
-    pinning_piece = ""
-    for i in range(len(pinned_pieces)):
-        if pinned_pieces[i][0] == check_location:
-            pinned = True
-            pinning_pieces+=1  #finds number of pieces pinning
-            pinning_piece = pinned_pieces[i][1] #finds pinning piece
-            
-    if pinning_pieces > 1:
-        #if more than 1 piece pinning, it CANNOT move (special case)
-        return (9,9)
-    else:
-        #if 1 or 0 pieces pinning
-        return pinning_piece
-    
-def slider_move_loop(location, colour,moves,x,y):
-    global pin_ray_squares
-    
-    if colour == "white":
-        opposite_colour_locations = black_locations
-        same_colour_locations = white_locations
-        opposite_pieces = black_pieces
-    else:
-        same_colour_locations = black_locations
-        opposite_colour_locations = white_locations
-        opposite_pieces = white_pieces
-    
-    #checks if empty, if not, stops checking that direction
-    #then checks if same colour, if not, then taking it is possible
-    chain = 1
-    first = False
-    second = False #(checking for pins)
-    pin_location = () #(i.e. no pin location. It resets for each direction) (who you pin)
-    new_pin_ray_squares = []
-    return_pin_ray_squares = False
-    while second == False and chain < 8:            
-        #if not same colour (empty or other colour)
-        if (location[0] + (chain * x), location[1] + (chain * y)) not in same_colour_locations and \
-                -1 < location[0] + (chain * x) < 8 and -1 < location[1] + (chain * y) < 8: # and on board
-            
-            #if not seen piece yet, add move
-            if first == False:
-                moves.append((location[0] + (chain * x), location[1] + (chain * y)))   
-            #need to get a seperate list for each piece, with loc. as index 0
-            #is only not set back to what it was before looping if there is a pin detected
-            if second == False:
-                new_pin_ray_squares.append((location[0] + (chain * x), location[1] + (chain * y)))
-            
-            #if enemy, stop appending moves (since not empty)
-            if (location[0] + (chain * x), location[1] + (chain * y)) in opposite_colour_locations:
-                #gets the location of the piece being pinned.
-                #ignored if no pin is found
-                if first == False:
-                    pinned_location = (location[0] + (chain * x), location[1] + (chain * y))
-                
-                if (location[0] + (chain * x), location[1] + (chain * y)) == opposite_colour_locations[opposite_pieces.index("king")]:
-                        #if check
-                        if first == False:
-                            in_check = True
-                            in_check_by.append((location[0], location[1], turn_count))
-                            print("check")
-                        
-                        #if pin
-                        elif second == False:
-                            #pinned piece if piece behind it is king (cannot be moved)
-                            new_pin_ray_squares.insert(0, location)
-                            return_pin_ray_squares = True
-                            new_pin_ray_squares.pop()
-                            if [pinned_location, location, turn_count] not in pinned_pieces:
-                                pinned_pieces.append([pinned_location, location, turn_count])
-                
-                if first == True:
-                    second = True
-                else:
-                    first = True   
-        else:
-            #if own team, cannot pin or take
-            second = True
-        chain+=1
-
-    if return_pin_ray_squares == True:
-        if new_pin_ray_squares != [] and new_pin_ray_squares not in pin_ray_squares:
-            pin_ray_squares.append(new_pin_ray_squares)
-    return moves
-
-#check for legal rook moves
-def rook_moves(location, colour):
-    moves = []
-    # //TODO clean up if statement
-    if colour == "white":
-        opposite_colour_locations = black_locations
-        same_colour_locations = white_locations
-        opposite_pieces = black_pieces
-    else:
-        same_colour_locations = black_locations
-        opposite_colour_locations = white_locations
-        opposite_pieces = white_pieces
-    #if pinned
-    pinned_by = check_pinned(location)
-    if pinned_by == (9,9): #if pinned by 2+ pieces
-        #cannot move
-        return moves
-    elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves R
-        # it also only needs to check if *itself* is pinned
-        for i in range(len(pinned_pieces)):
-            pinning_piece = pinned_pieces[i][1]
-            if opposite_pieces(opposite_colour_locations.index(pinning_piece)) == "rook":
-                #moves between pinned and pinning
-                pass
-                #dont need to keep looping after finding the right pinning piece
-                break
-        
-    #loops through right, left, down up:
-    #in that order, since then the evens are increases, oddds are decreases
-    for i in range(4):
-        #assigns a multiplier which is later applied
-        #this allows to check for moves in a line in all 4 directions
-        #if right, down
-        x = 0
-        y = 0
-        if i % 2 == 0:
-            #if down
-            if i == 0:
-                y = 1
-            else:
-                x = 1
-        #if left, up
-        else:
-            #if up
-            if i == 1:
-                y = -1
-            else:
-                x = -1
-        
-        moves = slider_move_loop(location, colour, moves,x,y)
-    return moves
-
-#check bishop moves
-def bishop_moves(location, colour):
-    moves = []
-    #this is so that pin_ray_squares is only added for this piece if it is pinning something
-
-   #if pinned
-    pinned_by = check_pinned(location)
-    if pinned_by == (9,9): #if pinned by 2+ pieces
-        #cannot move
-        return moves
-    elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves B
-        #need to find moves that are also in the corresponding pin_ray_squares (of pinning piece)
-        # find pin_ray_squares
-        #check which direction the piece is pinned in
-        #some shenanigans and can basically add pin_ray_squares to moves (if same piece or queen
-        pass
-    #loops through a,b,c,d:
-    #a = 1,1 b = -1,-1, c = 1,-1 , d = -1,1
-    #in that order, since then the evens are increases, odds are decreases
-    for i in range(4):
-        #assigns a multiplier which is later applied
-        #this allows to check for moves in a line in all 4 directions
-        #tried to have as few lines and checks as possible for file size and run speed
-        x = 0; y = 0
-        #if a or c
-        if i % 2 == 0:
-            if i == 0:
-                x = 1; y = 1
-            else:
-                x = 1; y = -1
-        #if b or d
-        else:
-            if i == 1:
-                x = -1; y = -1
-            else:
-                x = -1; y = 1
-        
-        moves = slider_move_loop(location, colour, moves,x,y)
-        
-    return moves
-
-#find knight moves
-def knight_moves(location, colour):
-    moves = []
-    #if pinned
-    pinned_by = check_pinned(location)
-    if pinned_by == (): #if pinned
-        #knights cannot move if pinned, since cannot move onto its own pin_ray_squares
-       return moves
-
-    if colour == "white":
-        team_locations = white_locations
-        opposite_colour = black_locations
-        opposite_pieces = black_pieces
-    else:
-        team_locations = black_locations
-        opposite_colour = white_locations
-        opposite_pieces = white_pieces
-
-    x_counts = [1,2,2,1,-1,-2,-2,-1]
-    y_counts = [2,1,-1,-2,-2,-1,1,2]
+#drawing coordinates
+def draw_coordinates():
+    #draws little text on the sides of the board, to show coordinates (bottom, top, left and right, not just 2 of them  
     for i in range(8):
-        #if dest square on board and not of same colour
-        if -1 < location[0]+x_counts[i] < 8 and -1 < location[1]+y_counts[i] < 8 \
-                and (location[0]+x_counts[i], location[1]+y_counts[i]) not in team_locations:
-            moves.append((location[0]+x_counts[i],location[1]+y_counts[i]))
-            #if giving check:
-            if (location[0]+x_counts[i], location[1]+y_counts[i]) in opposite_colour:
-                if opposite_pieces.index("king") == opposite_colour.index((location[0]+x_counts[i], location[1]+y_counts[i])):
-                    in_check = True
-                    in_check_by.append((location[0], location[1], turn_count))
-                    print("check")          
-    return moves
-
-#find queen moves
-def queen_moves(location, colour):
-    #just uses bishop and roook move finders
-    moves = rook_moves(location, colour)
-    moves2 = bishop_moves(location, colour)
-    
-    for i in range(len(moves2)):
-        moves.append(moves2[i])
-    return moves
-
-#finding king moves
-def king_moves(location, colour):
-    
-    possible_x_changes = [-1,0,1,1,1,0,-1,-1]
-    possible_y_changes = [1,1,1,0,-1,-1,-1,0]
-    moves_list = []
-    if colour == "white":
-        opposite_colour_moves = black_moves
-    else:
-        opposite_colour_moves = white_moves
-    
-    if colour == "white":
-        opposite_colour_locations = black_locations
-        same_colour_locations = white_locations
-    else:
-        same_colour_locations = black_locations
-        opposite_colour_locations = white_locations
-
-    #checks if squares are empty
-    for i in range(8):
-        target_square = (location[0] + possible_x_changes[i], location[1] + possible_y_changes[i])
-        if target_square not in same_colour_locations and -1 < target_square[0] < 8 and -1 < target_square[1] < 8 and target_square not in opposite_colour_moves:
-            if in_check == True:
-                #if square is in check, cannot move there
-                if target_square not in pin_ray_squares:
-                    moves_list.append(target_square)
-            else:
-                moves_list.append(target_square)
-            
-    return moves_list
-
-#pawn moves
-def pawn_moves(location, colour):
-    moves = []
-    max = 1
-   #if pinned
-    pinned_by = check_pinned(location)
-    if pinned_by == (9,9): #if pinned by 2+ pieces
-        #cannot move
-        return moves
-    elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves P
-        #need to find moves that are also in the corresponding pin_ray_squares (of pinning piece)
-        # find pin_ray_squares
-        #check which direction the piece is pinned in
-        #some shenanigans and can basically add pin_ray_squares to moves (if same piece or queen
-        pass
-    
-        if colour == "white":
-            opposite_colour_locations = black_locations ; same_colour_locations = white_locations ; direction = 1
-            if location in white_locations:
-                pawn_index = white_locations.index(location)
-                if white_moved[pawn_index] == False:
-                    max = 2
-        else:
-            same_colour_locations = black_locations ; opposite_colour_locations = white_locations ; direction = -1
-            if location in black_locations:
-                pawn_index = black_locations.index(location)
-                if black_moved[pawn_index] == False:
-                    max = 2
-            
-        # checks 1 in front (and 2 if not moved). If square is empty can move there (+1 bc goes to 1 less than given num)
-        for i in range(max+1):
-            if -1 < location[1] + (i * direction) < 8 and (location[0], location[1] + (i * direction)) not in same_colour_locations \
-                    and (location[0], location[1] + (i * direction)) not in opposite_colour_locations:
-                moves.append((location[0], location[1] + (i * direction)))
-        # checking diagonals for taking
-        #from -1 to 1 (basically just to get -1 and 1 values)
-        for i in range(-1,2):
-            if i != 0:
-                target_square = (location[0] + i, location[1] + direction)
-                #if target square is on board, and ocupied by oppo colour
-                if -1 < target_square[0] < 8 and -1 < target_square[1] < 8 and target_square in opposite_colour_locations:
-                    moves.append(target_square)
-                    if black_pieces.index("king") == opposite_colour_locations.index(target_square):
-                        in_check = True
-                        in_check_by.append((location[0], location[1], turn_count))
-                        print("check")
+        letter_text = coordinate_font.render(chr(65+i), False, (0, 0, 0))   # A-H
+        number_text = coordinate_font.render(str(1 + i), False, (0, 0, 0))  # 1-8
         
-    #en passant
-    return moves
+        screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset - piece_size/4))
+        screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset + piece_size*10 + piece_size/8))
+        
+        screen.blit(number_text, (x_offset - piece_size/4 + 3, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+        screen.blit(number_text, (x_offset + piece_size*10 + piece_size/8, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+
+#choosing which side you are playing as (i.e. which is at bottom of board)
+def choose_side(side_setting):
+    #if random side
+    if side_setting == "random":
+        if pygame.time.get_ticks() % 2 == 0:
+            return "white"
+        else:
+            return "black"
+    #if selected black/white in settings:
+    # //TODO make this a setting in the settings menu
+    # also remember to check if second bit needs to be elif or not
+    if side_setting == "white":
+        return "white"
+    elif side_setting == "black":
+        return "black"
 
 #game loop
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
     global run
-    if run:
+    if run:        
         global turn_step, white_pieces, black_pieces, white_locations, black_locations
         global moves, turn_count, selected_piece, white_moves, black_moves, in_check
         
+        #draw everything
         screen.fill('dark gray')
         board()
         pieces()
+        draw_coordinates()
+        draw_material()
+        
+        evaluate_position(white_locations, black_locations, white_pieces, black_pieces)
 
         if turn_step < 2:
             all_moves = white_moves
@@ -889,6 +555,7 @@ def gameloop():
 run = True
 while run:
     menu()
+    
     if menu() == "start":
         #if start game, run game loop
         while run:
