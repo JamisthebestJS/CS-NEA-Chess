@@ -2,6 +2,7 @@ import pygame, sys
 from settings import *
 from get_moves import *
 from engine import evaluate_position
+import random
 
 # TODO
 # - en passant checker for pawn moves
@@ -138,7 +139,7 @@ black_promotions = ['bishop', 'knight', 'rook', 'queen']
 
 piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 
-
+run = True
 
 
 def menu():
@@ -166,7 +167,7 @@ def menu():
     
     """
     
-    global screen
+    global screen, width, height
     #background or smt
     width = screen.get_width()
     height = screen.get_height()
@@ -202,7 +203,28 @@ def menu():
     pygame.draw.rect(screen, (14,105,21), (width/3, 9*height/11, width/3, height/11))
     pygame.draw.rect(screen, (20,150,30), (width/3, 9*height/11, width/3, height/11), 3, 3)
     
+    get_menu_button_presses()
+       
+        
+    dev_tools_button_text = menu_font.render('dev tools', False, (0, 0, 0))
+    screen.blit(dev_tools_button_text, ((width - dev_tools_button_text.get_width())/2, 9 * height/11 + 5))
+    start_button_text = menu_font.render('start', False, (0, 0, 0))
+    screen.blit(start_button_text, ((width - start_button_text.get_width())/2, height * 5/11 + 5))
+    options_button_text = menu_font.render('options', False, (0, 0, 0))
+    screen.blit(options_button_text, ((width - options_button_text.get_width())/2, height * 7/11 + 5))
     
+    #to resize
+    pygame.display.update()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+            run = False
+        if event.type == pygame.VIDEORESIZE:
+            # There's some code to add back window content here.
+            screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+            
+def get_menu_button_presses():
     mouse_pos = pygame.mouse.get_pos()
     if mouse_pos[0] > width/3 and mouse_pos[0] < (width/3 + width/3) and mouse_pos[1] > 5*height/11 and mouse_pos[1] < (5*height/11 + height/11):
         #if mouse is over start button, highlight it
@@ -228,27 +250,6 @@ def menu():
         if pygame.mouse.get_pressed()[0]:
             #if mouse is clicked, open dev tools
             return "dev_tools"
-        
-        
-    dev_tools_button_text = menu_font.render('dev tools', False, (0, 0, 0))
-    screen.blit(dev_tools_button_text, ((width - dev_tools_button_text.get_width())/2, 9 * height/11 + 5))
-    start_button_text = menu_font.render('start', False, (0, 0, 0))
-    screen.blit(start_button_text, ((width - start_button_text.get_width())/2, height * 5/11 + 5))
-    options_button_text = menu_font.render('options', False, (0, 0, 0))
-    screen.blit(options_button_text, ((width - options_button_text.get_width())/2, height * 7/11 + 5))
-    
-    #to resize
-    pygame.display.update()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-            run = False
-        if event.type == pygame.VIDEORESIZE:
-            # There's some code to add back window content here.
-            screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
-            
-
 #board drawing
 def board():
     width = screen.get_width()
@@ -259,7 +260,7 @@ def board():
     #to ensure gameboard is square
     b = min(width, height)/5
     a=b
-    board_size = min(width, height) - a
+    board_size = min(width, height) - a  #=min(width, height)*4/5
     if width > height:
         width_greater = True
         height_greater = False
@@ -274,11 +275,17 @@ def board():
         height_greater = False
     #pretty sure ^^ all works
 
+    #this is so that the board will be drawn flipped depending on side
+    if chosen_side == "white":
+        board_drawing_constant = 0
+    else:
+        board_drawing_constant = 1
+    
     if width_greater:
         x_offset = a/2
         y_offset = b/2
         for i in range(16): #rows
-            if i % 2 == 0:
+            if i % 2 == board_drawing_constant:
                 for j in range(4): #squares
                     pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2) * (board_size / 8)), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
@@ -332,6 +339,7 @@ def pieces():
     piece_size = board_size / 10 #(not /8 since should fit nicely in square, not be the exact same size as the square)
     pawn_piece_size = piece_size * 13/16
     
+    # //TODO if statement so only runs if there has been change of window size
     scaled_white_pawn = pygame.transform.smoothscale(white_pawn, (pawn_piece_size, pawn_piece_size))
     scaled_black_pawn = pygame.transform.smoothscale(black_pawn, (pawn_piece_size, pawn_piece_size))
     scaled_white_king = pygame.transform.smoothscale(white_king, (piece_size, piece_size))
@@ -346,87 +354,143 @@ def pieces():
     scaled_black_knight = pygame.transform.smoothscale(black_knight, (piece_size, piece_size))
     scaled_white_images = [scaled_white_pawn, scaled_white_queen, scaled_white_king, scaled_white_knight, scaled_white_rook, scaled_white_bishop]
     scaled_black_images = [scaled_black_pawn, scaled_black_queen, scaled_black_king, scaled_black_knight, scaled_black_rook, scaled_black_bishop]
-
-    #white pieces
-    for i in range(len(white_pieces)):
-        index = piece_list.index(white_pieces[i])
-        if white_pieces[i] == "pawn":
+    
+    global chosen_side, near_locations, near_pieces, far_locations, far_pieces
+    near_locations = []
+    far_locations = []
+    if chosen_side == "white":
+        near_pieces = white_pieces
+        far_pieces = black_pieces
+        for i in range(len(white_locations)):
+            near_locations.append(coord_conversion(white_locations[i]))
+            far_locations.append(coord_conversion(black_locations[i]))
+        near_scaled_pawn = scaled_white_pawn
+        far_scaled_pawn = scaled_black_pawn
+        near_scaled_images = scaled_white_images
+        far_scaled_images = scaled_black_images
+    elif chosen_side == "black":
+        near_pieces = black_pieces
+        far_pieces = white_pieces
+        near_locations = black_locations
+        far_locations = white_locations
+        near_scaled_pawn = scaled_black_pawn
+        far_scaled_pawn = scaled_white_pawn
+        near_scaled_images = scaled_black_images
+        far_scaled_images = scaled_white_images
+    else:
+        print("Error: Invalid Side Chosen")
+        pygame.quit()
+        run = False
+    
+    
+    #far pieces
+    for i in range(len(far_pieces)):
+        index = piece_list.index(far_pieces[i])
+        if far_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_white_pawn,(x_offset + ((white_locations[i][0]+0.175) * board_size/8), y_offset + ((white_locations[i][1]+0.2) * board_size/8)))
+            screen.blit(far_scaled_pawn,(x_offset + ((far_locations[i][0]+0.175) * board_size/8), y_offset + ((far_locations[i][1]+0.2) * board_size/8)))
         else:
-            screen.blit(scaled_white_images[index],(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.1) * board_size/8)))
+            screen.blit(far_scaled_images[index],(x_offset + ((far_locations[i][0]+0.1) * board_size/8), y_offset + ((far_locations[i][1]+0.1) * board_size/8)))
         
         #selecting "animation"
         if turn_step < 2:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [x_offset + (white_locations[i][0] * board_size/8 + 1), y_offset + (white_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
+                pygame.draw.rect(screen, 'green', [x_offset + (far_locations[i][0] * board_size/8 + 1), y_offset + (far_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
     
-    #black pieces
-    for i in range(len(black_pieces)):
-        index = piece_list.index(black_pieces[i])
-        if black_pieces[i] == "pawn":
+    #near pieces
+    for i in range(len(near_pieces)):
+        index = piece_list.index(near_pieces[i])
+        if near_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_black_pawn,(x_offset + ((black_locations[i][0]+0.1) * board_size/8 + piece_size/7), y_offset + ((black_locations[i][1]+0.2) * board_size/8)))
+            screen.blit(near_scaled_pawn,(x_offset + ((near_locations[i][0]+0.125) * board_size/8 + piece_size/7), y_offset + ((near_locations[i][1]+0.2) * board_size/8)))
         else:
-            screen.blit(scaled_black_images[index],(x_offset + ((black_locations[i][0]+0.1) * board_size/8), y_offset + ((black_locations[i][1]+0.1) * board_size/8)))
+            screen.blit(near_scaled_images[index],(x_offset + ((near_locations[i][0]+0.1) * board_size/8), y_offset + ((near_locations[i][1]+0.1) * board_size/8)))
 
         #selecting "animation"
         if turn_step > 1:
             if selected_piece == i:
                 #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [x_offset + (black_locations[i][0] * board_size/8 + 1), y_offset + (black_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
+                pygame.draw.rect(screen, 'green', [x_offset + (near_locations[i][0] * board_size/8 + 1), y_offset + (near_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
+
+def play_UI():
+    # //TODO add the UI elements, e.g. moves played, resign button, new game button, win/lose/draw display. Might split this stuff up later though
+    pass
 
 #drawing material taken
 def draw_material():
+    taken_by_black_pieces
+    taken_by_white_pieces
     # //TODO draw material taken
     #this should draw the material taken by each player, in a list, with the total material worth
     #it should be draw on the correct side (above/below)
-    return 0       
+    return 0    
+   
 #drawing valid movses
 def draw_legal_moves(moves):
     global piece_size
-    # //FIXME at small window sizes, these are offset drastically
-    #it also happens at larger sizes, just less noticably
     for i in range(len(moves)):
-        pygame.draw.circle(screen, "green", (x_offset + piece_size/8+ (moves[i][0] * (piece_size*5/4) + 50), y_offset + (moves[i][1] * (piece_size*5/4) + 50)), 5)
+        coord = coord_conversion(moves[i])
+        pygame.draw.circle(screen, "green", (x_offset + piece_size*5/8 + (coord[0] * (piece_size*5/4)), y_offset + piece_size*5/8 + (coord[1] * (piece_size*5/4))), 5)
 
-#drawing coordinates
+#drawing coordinates on grid axis
 def draw_coordinates():
     #draws little text on the sides of the board, to show coordinates (bottom, top, left and right, not just 2 of them  
-    for i in range(8):
-        letter_text = coordinate_font.render(chr(65+i), False, (0, 0, 0))   # A-H
-        number_text = coordinate_font.render(str(1 + i), False, (0, 0, 0))  # 1-8
-        
-        screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset - piece_size/4))
-        screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset + piece_size*10 + piece_size/8))
-        
-        screen.blit(number_text, (x_offset - piece_size/4 + 3, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
-        screen.blit(number_text, (x_offset + piece_size*10 + piece_size/8, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+    if chosen_side == "white":
+        for i in range(8):       
+            letter_text = coordinate_font.render(chr(65 + i), False, (0, 0, 0))   # A-H
+            number_text = coordinate_font.render(str(8 - i), False, (0, 0, 0))  # 1-8
+            
+            screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset - piece_size/4))
+            screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset + piece_size*10 + piece_size/8))
+            
+            screen.blit(number_text, (x_offset - piece_size/4 + 3, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+            screen.blit(number_text, (x_offset + piece_size*10 + piece_size/8, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+    else: 
+        for i in range(8):       
+            letter_text = coordinate_font.render(chr(72 - i), False, (0, 0, 0))   # A-H
+            number_text = coordinate_font.render(str(1 + i), False, (0, 0, 0))  # 1-8
+            
+            screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset - piece_size/4))
+            screen.blit(letter_text, (x_offset + (i * piece_size * 5/4) + piece_size*5/8, y_offset + piece_size*10 + piece_size/8))
+            
+            screen.blit(number_text, (x_offset - piece_size/4 + 3, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
+            screen.blit(number_text, (x_offset + piece_size*10 + piece_size/8, y_offset + (i * piece_size * 5/4) + piece_size*5/8))
 
 #choosing which side you are playing as (i.e. which is at bottom of board)
 def choose_side(side_setting):
     #if random side
     if side_setting == "random":
-        if pygame.time.get_ticks() % 2 == 0:
+        if random.randint(0,100) % 2 == 0:
             return "white"
         else:
             return "black"
-    #if selected black/white in settings:
+    #if selected black/white in settings
     # //TODO make this a setting in the settings menu
-    # also remember to check if second bit needs to be elif or not
+    # // TODO also remember to check if second bit needs to be elif or not
     if side_setting == "white":
         return "white"
     elif side_setting == "black":
         return "black"
 
+def coord_conversion(coord):
+    """
+    this is for when the board is flipped, since then, the coordinates are flipped.
+    """
+    if chosen_side == "black":
+        return coord
+    else:
+        #if playing as white, flip y-coord
+        coord = (coord[0], 7 - coord[1])
+    return coord
+
 #game loop
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
-    global run
+    global run, moves
     if run:        
-        global turn_step, white_pieces, black_pieces, white_locations, black_locations
+        global turn_step, near_pieces, far_pieces, near_locations, far_locations
         global moves, turn_count, selected_piece, white_moves, black_moves, in_check
         
         #draw everything
@@ -436,16 +500,18 @@ def gameloop():
         draw_coordinates()
         draw_material()
         
-        evaluate_position(white_locations, black_locations, white_pieces, black_pieces)
+        evaluate_position(white_locations, black_locations, white_pieces, black_pieces) #eval is always same, no matter which side you play (i.e. white better ==>  >0  & vice versa)
 
         if turn_step < 2:
             all_moves = white_moves
         else:
             all_moves = black_moves
+        #if selected piece is not empty square, and is a piece with possible moves (since e.g. white moves has a list for each piec with moves)
         if selected_piece != 65 and 0 <= selected_piece < len(all_moves):
             moves = all_moves[selected_piece]
             draw_legal_moves(moves)
         else:
+            #if piece has no possible moves, or selected square is blank
             moves = []
 
     ##print("before event loop")
@@ -487,7 +553,7 @@ def gameloop():
             if turn_step < 2:
                 ##print("white turn")
                 #if select white piece
-                if click_coord in white_locations:
+                if click_coord in near_locations:
                     ##print("selected white piece")
                     selected_piece = white_locations.index(click_coord)
                     moves = find_moves(white_pieces, white_locations, 'white')[selected_piece]
@@ -524,7 +590,7 @@ def gameloop():
 
             #if blacks turn                
             if turn_step > 1:
-                if click_coord in black_locations:
+                if click_coord in far_locations:
                     selected_piece = black_locations.index(click_coord)
                     moves = find_moves(black_pieces, black_locations, 'black')[selected_piece]
                     
@@ -551,34 +617,38 @@ def gameloop():
                     turn_count += 1
 
 
-
-run = True
-while run:
-    menu()
-    
-    if menu() == "start":
-        #if start game, run game loop
-        while run:
-            pygame.display.update()
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    run = False
-                    pygame.quit()
-                if event.type == pygame.VIDEORESIZE:
-                    # There's some code to add back window content here.
-                    screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
-            gameloop()
-           
+def run_loop():
+    global run
+    while run:
+        menu()
+        
+        if get_menu_button_presses() == "start":
+            # here because this is needed before board, pieees are drawn, and only needs to be called once per "start" click, potentially less in future
+            global chosen_side
+            chosen_side = ""
+            chosen_side = choose_side("random")
+            print(chosen_side)
+            #if start game, run game loop
+            while run:
+                pygame.display.update()
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        run = False
+                        pygame.quit()
+                    if event.type == pygame.VIDEORESIZE:
+                        # There's some code to add back window content here.
+                        screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+                gameloop()
+                
+        elif get_menu_button_presses() == "options":
+            # //TODO options menu
+            pygame.quit()
+            run = False
+        elif get_menu_button_presses() == "dev_tools":
+            # //TODO dev tools menu
+            pygame.quit()
+            run = False
             
-            
-    elif menu() == "options":
-        # //TODO options menu
-        pygame.quit()
-        run = False
-    elif menu() == "dev_tools":
-        # //TODO dev tools menu
-        pygame.quit()
-        run = False
+    pygame.quit()
 
-           
-pygame.quit()
+run_loop()

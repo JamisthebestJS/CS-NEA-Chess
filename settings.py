@@ -6,9 +6,6 @@ HEIGHT = 960
 
 
 
-
-
-
 """PARAMETERS"""
 # Piece values
 global pawn_value, knight_value, bishop_value, rook_value, queen_value, king_value
