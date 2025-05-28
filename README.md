@@ -8,3 +8,4 @@ Currently a work in progress. I would suggest I am about 60% the way through get
 However, the parts I have left are tough, having en passant, castling, stalemates, win conditions, checks, pins, and promotions
 
 Menu Finished (mostly)
+Some features (e.g. board flipping and *you* having a side are half way through implementation)
