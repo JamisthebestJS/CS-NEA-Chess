@@ -51,11 +51,25 @@ def evaluate_position(white_locaitons, black_locations, white_pieces, black_piec
     return white_score - black_score
 
 
-def get_best_move(pieces, location, turn):
-# this is where the search tree will be implemented
-# for now, just return a random move
+def get_best_move(pieces, locations, turn):
+    """
+    returns a list of 2 coords
+    the first one is the moved pieces current location
+    the second one is the destination
+    """
+    
 
-    best_move = random.choice(find_moves(pieces, location, turn))
+    # for now, just return a random move
+    #the piece being moved
+    indices = []
+    best_move = []
+    moves = find_moves(pieces, locations, turn)
+    for i in range(len(moves)):
+        if moves[i] != []:
+            indices.append(i)
+    index = random.choice(indices)
+    move_list = moves[index]
+    best_move.append(random.choice(move_list))
+    best_move.insert(0, locations[index])
     print(best_move)
     return best_move
-#also need to figure out when to actually run this, and where.

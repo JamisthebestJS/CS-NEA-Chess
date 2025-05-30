@@ -16,21 +16,22 @@ black_pieces = ["rook","knight", "bishop", "king", "queen", "bishop", "knight", 
 black_locations = [(0,7),(1,7),(2,7),(3,7),(4,7),(5,7),(6,7),(7,7),
                    (0,6),(1,6),(2,6),(3,6),(4,6),(5,6),(6,6),(7,6)]
 
-taken_by_white_pieces = []
-taken_by_black_pieces = []
-white_moves = []
-black_moves = []
-
-# 0 is white to play, 1 is white piece selected, 2 is black to play, 3 is black piece selected
-turn_step = 0
-turn_count = 0 #total mvoves made, (total turn_steps / 2)
+global selected_piece
 selected_piece = 65
 
 pin_ray_squares = []
 #if 1 piece giving check, can block it
 in_check_by = []
+global in_check
 in_check = False
 pinned_pieces = []
+
+global turn_count
+turn_count = 0
+
+
+black_moves = []
+white_moves = []
 
 black_moved = [False, False, False, False, False, False, False, False,
                False, False, False, False, False, False, False, False]
@@ -322,19 +323,24 @@ def pawn_moves(location, colour):
             if location in white_locations:
                 pawn_index = white_locations.index(location)
                 if white_moved[pawn_index] == False:
-                    max = 2
+                    two_possible = True
         else:
             same_colour_locations = black_locations ; opposite_colour_locations = white_locations ; direction = -1
             if location in black_locations:
                 pawn_index = black_locations.index(location)
                 if black_moved[pawn_index] == False:
-                    max = 2
+                    two_possible = True
             
-        # checks 1 in front (and 2 if not moved). If square is empty can move there (+1 bc goes to 1 less than given num)
-        for i in range(max+1):
+        # checks 1 in front (and 2 if not moved). 
+        #can only move 2 if can move 1, so, you dont loop through to check 2, if 1 isnt possible
+        i = 0
+        while i in range(max+1) and two_possible == True:
+            i+=1
             if -1 < location[1] + (i * direction) < 8 and (location[0], location[1] + (i * direction)) not in same_colour_locations \
                     and (location[0], location[1] + (i * direction)) not in opposite_colour_locations:
                 moves.append((location[0], location[1] + (i * direction)))
+            else:
+                two_possible = False
         # checking diagonals for taking
         #from -1 to 1 (basically just to get -1 and 1 values)
         for i in range(-1,2):
@@ -350,7 +356,6 @@ def pawn_moves(location, colour):
         
     #en passant
     return moves
-
 
 #check options for pieces to move
 def find_moves(pieces, locations, turn):
