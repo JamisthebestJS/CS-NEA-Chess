@@ -317,43 +317,41 @@ def pawn_moves(location, colour):
         #check which direction the piece is pinned in
         #some shenanigans and can basically add pin_ray_squares to moves (if same piece or queen
         pass
-    
-        if colour == "white":
-            opposite_colour_locations = black_locations ; same_colour_locations = white_locations ; direction = 1
-            if location in white_locations:
-                pawn_index = white_locations.index(location)
-                if white_moved[pawn_index] == False:
-                    two_possible = True
-        else:
-            same_colour_locations = black_locations ; opposite_colour_locations = white_locations ; direction = -1
-            if location in black_locations:
-                pawn_index = black_locations.index(location)
-                if black_moved[pawn_index] == False:
-                    two_possible = True
-            
-        # checks 1 in front (and 2 if not moved). 
-        #can only move 2 if can move 1, so, you dont loop through to check 2, if 1 isnt possible
-        i = 0
-        while i in range(max+1) and two_possible == True:
-            i+=1
-            if -1 < location[1] + (i * direction) < 8 and (location[0], location[1] + (i * direction)) not in same_colour_locations \
-                    and (location[0], location[1] + (i * direction)) not in opposite_colour_locations:
-                moves.append((location[0], location[1] + (i * direction)))
-            else:
-                two_possible = False
-        # checking diagonals for taking
-        #from -1 to 1 (basically just to get -1 and 1 values)
-        for i in range(-1,2):
-            if i != 0:
-                target_square = (location[0] + i, location[1] + direction)
-                #if target square is on board, and ocupied by oppo colour
-                if -1 < target_square[0] < 8 and -1 < target_square[1] < 8 and target_square in opposite_colour_locations:
-                    moves.append(target_square)
-                    if black_pieces.index("king") == opposite_colour_locations.index(target_square):
-                        in_check = True
-                        in_check_by.append((location[0], location[1], turn_count))
-                        print("check")
+    two_possible = True
+    if colour == "white":
+        opposite_colour_locations = black_locations ; same_colour_locations = white_locations ; direction = 1
+        if location in white_locations:
+            pawn_index = white_locations.index(location)
+            if white_moved[pawn_index] == False:
+                max = 2
+    else:
+        same_colour_locations = black_locations ; opposite_colour_locations = white_locations ; direction = -1
+        if location in black_locations:
+            pawn_index = black_locations.index(location)
+            if black_moved[pawn_index] == False:
+                max = 2
         
+    # checks 1 in front (and 2 if not moved). 
+    #can only move 2 if can move 1, so, you dont loop through to check 2, if 1 isnt possible
+    i = 0
+    while i in range(max):
+        i+=1
+        if -1 < location[1] + (i * direction) < 8 and (location[0], location[1] + (i * direction)) not in same_colour_locations \
+                and (location[0], location[1] + (i * direction)) not in opposite_colour_locations:
+            moves.append((location[0], location[1] + (i * direction)))
+    # checking diagonals for taking
+    #from -1 to 1 (basically just to get -1 and 1 values)
+    for i in range(-1,2):
+        if i != 0:
+            target_square = (location[0] + i, location[1] + direction)
+            #if target square is on board, and ocupied by oppo colour
+            if -1 < target_square[0] < 8 and -1 < target_square[1] < 8 and target_square in opposite_colour_locations:
+                moves.append(target_square)
+                if black_pieces.index("king") == opposite_colour_locations.index(target_square):
+                    in_check = True
+                    in_check_by.append((location[0], location[1], turn_count))
+                    print("check")
+    
     #en passant
     return moves
 

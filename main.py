@@ -5,6 +5,9 @@ from engine import evaluate_position, get_best_move
 import random
 
 # TODO
+
+# //TODO get moves resetting after making a move
+
 # - en passant checker for pawn moves
 # - castling checker for king moves
 # - win check
@@ -20,19 +23,10 @@ import random
     # - if king is in check, only moves that get out of check are valid
 # - pin checker which is currently in progress. This counts as part of check checker since it stops you from making illegal moves due to attack on king
 
-# - be able to flip board based on white colour you are playing
-    # - not sure how rn or if possible at all with current board setup
-# - mirror opponents pieces? Some sort of indication of your colour?
-# - have a start menu, to be able to select settings, etc.
-    # - when load up game, menu is presented.
-    # - have options button, play game button, select opening button
-        # - options leads to options, such as set resizes, play black, white, black/white, time formats
-        # - play game obviously starts a game
-        # - select opening button opens a list of openings with a search bar
-            # - you can search (some simple search nothing complex)
-            # - can select an opening that the bot will play (first few moves, until you force them to make differing move, or smt, decide criteria later)
-            # - that opening is then played when you start your next game
-# - when playing, only be able to select your own pieces (one-player, not 2, maybe even have this as an option)
+# customisable opening table of some sort.
+# i.e be able to select an opening, but up to any move (so you could select D4, or, D4 NF3, and the engine would play those moves until illegal, or the end of the move string)
+#could also have opening database or something, and be able to select e.g. "dragon" or "caro kann" and it plays a random line from that/responds to your moves
+     
 # - add a graphic showing what pieces taken, etc. along botttom
     # - have pieces taken list, just render them basically, and have a little text line saying what the material worth is, and stuff
     
@@ -82,7 +76,10 @@ For making better, allow multiple look-ahead moves. 2 is 4x better than 1, 3 is 
 pygame.init()
 
 screen = pygame.display.set_mode([WIDTH, HEIGHT], pygame.RESIZABLE)
-pygame.display.set_caption('Le Chess')
+pygame.display.set_caption('Time to do the procedure')
+kramnic = pygame.image.load('assets/images/Kramnic.png')
+kramnic2 = pygame.image.load('assets/images/kramnic2.jpg')
+pygame.display.set_icon(kramnic2)
 #ygame.display.set_icon(pygame.image.load('assets/images/chess_icon.png'))
 
 timer = pygame.time.Clock()
@@ -140,7 +137,10 @@ black_promotions = ['bishop', 'knight', 'rook', 'queen']
 piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 
 run = True
+global turn
 turn = "white"
+global moves
+moves = []
 
 taken_by_player = []
 taken_by_computer = []
@@ -335,7 +335,6 @@ def draw_board():
 
 #draw pieces
 def draw_pieces():
-    
     w = screen.get_width()
     h = screen.get_height()
     board_size = min(w, h) * 4/5
@@ -360,38 +359,38 @@ def draw_pieces():
     scaled_black_images = [scaled_black_pawn, scaled_black_queen, scaled_black_king, scaled_black_knight, scaled_black_rook, scaled_black_bishop]
     
     
-    # //TODO change logic so swaps sides if needed
+    # //TODO change piece rendering logic to allow for board flipping.
+    #find how far from top of board, and if board flip, then do board_size - that as distance from top of board, then add to whatever padding there is
+
+        
     #white pieces
-    if chosen_side == "white":
-        board_flip_offset = 7*board_size/8
-        board_flip_offset_pawn = board_flip_offset - 2*board_size/8
-        #flip king and queens (pieces dont mirror vertically, but spin 180*)
-    else:
-        board_flip_offset = 0
-        board_flip_offset_pawn = 0
-    
+    white_render_locations = rendering_coords(white_locations)
     for i in range(len(white_pieces)):
         index = piece_list.index(white_pieces[i])
         if white_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_white_pawn,(x_offset + ((white_locations[i][0]+0.175) * board_size/8), y_offset + ((white_locations[i][1]+0.2) * board_size/8) + board_flip_offset_pawn))
+            #vertical distance from edge of board(top)
+            screen.blit(scaled_white_pawn,(x_offset + ((white_render_locations[i][0]+0.175) * board_size/8), y_offset + (white_render_locations[i][1]+0.2) * board_size/8))
         else:
-            screen.blit(scaled_white_images[index],(x_offset + ((white_locations[i][0]+0.1) * board_size/8), y_offset + ((white_locations[i][1]+0.1) * board_size/8) + board_flip_offset))
+            screen.blit(scaled_white_images[index],(x_offset + ((white_render_locations[i][0]+0.1) * board_size/8), y_offset + (white_render_locations[i][1]+0.1) * board_size/8))
+        #selecting animation
+        if chosen_side == "white":
+            if selected_piece == i:
+                selection_animation(white_render_locations, selected_piece)
     
+    black_render_locations = rendering_coords(black_locations)
     #black pieces
     for i in range(len(black_pieces)):
         index = piece_list.index(black_pieces[i])
         if black_pieces[i] == "pawn":
             #pawns are smaller images, so need special placement to get central
-            screen.blit(scaled_black_pawn,(x_offset + ((black_locations[i][0]+0.175) * board_size/8), y_offset + ((black_locations[i][1]+0.2) * board_size/8) - board_flip_offset_pawn))
+            screen.blit(scaled_black_pawn,(x_offset + ((black_render_locations[i][0]+0.175) * board_size/8), y_offset + (black_render_locations[i][1]+0.2) * board_size/8))
         else:
-            screen.blit(scaled_black_images[index],(x_offset + ((black_locations[i][0]+0.1) * board_size/8), y_offset + ((black_locations[i][1]+0.1) * board_size/8) - board_flip_offset))
-
-        #selecting "animation"
-        if turn == chosen_side:
+            screen.blit(scaled_black_images[index],(x_offset + ((black_render_locations[i][0]+0.1) * board_size/8), y_offset + (black_render_locations[i][1]+0.1) * board_size/8))
+        if chosen_side == "black":
             if selected_piece == i:
-                #could try scaling up the piece by a factor? like chess.com does
-                pygame.draw.rect(screen, 'green', [x_offset + (black_locations[i][0] * board_size/8 + 1), y_offset + (black_locations[i][1] * board_size/8 + 1), board_size/8, board_size/8], 2)
+                selection_animation(black_render_locations, selected_piece)
+            
 
 #draw square outline around selected piece
 def selection_animation(locations, i):
@@ -413,8 +412,13 @@ def draw_material():
 #drawing valid movses
 def draw_legal_moves(moves):
     global piece_size
-    for i in range(len(moves)):
-        pygame.draw.circle(screen, "green", (x_offset + piece_size*5/8 + (moves[i][0] * (piece_size*5/4)), y_offset + piece_size*5/8 + (moves[i][1] * (piece_size*5/4))), 5)
+    if chosen_side == "white":
+        render_moves = rendering_coords(moves)
+    else:
+        render_moves = moves
+        
+    for i in range(len(render_moves)):
+        pygame.draw.circle(screen, "green", (x_offset + piece_size*5/8 + (render_moves[i][0] * (piece_size*5/4)), y_offset + piece_size*5/8 + (render_moves[i][1] * (piece_size*5/4))), 5)
 
 #drawing coordinates on grid axis
 def draw_coordinates():
@@ -456,6 +460,7 @@ def choose_side(side_setting):
     elif side_setting == "black":
         return "black"
 
+#swaps king and queen if board flip. This imitates a 180* rotation when coupled with a vertical board flip
 def king_queen_swap():
     if chosen_side == "white":
         #if flipping board, then since an actual board rotates 180*
@@ -468,12 +473,23 @@ def king_queen_swap():
         white_pieces[king_index] = "queen"
         white_pieces[queen_index] = "king"
 
+#changes rendering coordinates so that after a board flip, the pieces are rendered as flipped (on the board)
+def rendering_coords(locations):
+    new_locations = []
+    if chosen_side == "white":
+        for i in range(len(locations)):
+            y = 7 - locations[i][1]
+            new_locations.append((locations[i][0], y))
+    else:
+        new_locations = locations
+    return new_locations
+
 #game loop
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
-    global run, moves, selected_piece
-    if run:        
+    global run, moves, selected_piece, turn_count, turn
+    if run:       
         #draw everything
         screen.fill('dark gray')
         draw_board()
@@ -483,30 +499,26 @@ def gameloop():
         
         evaluate_position(white_locations, black_locations, white_pieces, black_pieces) #eval is always same, no matter which side you play (i.e. white better ==>  >0  & vice versa)
 
-        if turn == "white":
-            all_moves = white_moves
-        else:
-            all_moves = black_moves
-        #if selected piece is not empty square, and is a piece with possible moves (since e.g. white moves has a list for each piec with moves)
-        if selected_piece != 65 and 0 <= selected_piece < len(all_moves):
-            moves = all_moves[selected_piece]
-            draw_legal_moves(moves)
-        else:
-            #if piece has no possible moves, or selected square is blank
-            moves = []
-
     ##print("before event loop")
     #events
+        if selected_piece != 65:
+            draw_legal_moves(moves)
+        
     for event in pygame.event.get():
+        
         if event.type == pygame.QUIT:
             run = False
             pygame.quit()
         
         #if left click
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # //TODO get this to get the right coords, if the board is flipped.
+            # //FIXME ^^
             #pixel clicked on window // 100 => square clicked on
-            x_coord = (event.pos[0] - x_offset) // (piece_size * 5/4)
-            y_coord = (event.pos[1] - y_offset) // (piece_size * 5/4)
+            x_coord = int((event.pos[0] - x_offset) // (piece_size * 5/4))
+            y_coord = int((event.pos[1] - y_offset) // (piece_size * 5/4))
+            if chosen_side == "white":
+                y_coord = 7 - y_coord
             click_coord = (x_coord, y_coord)
             ##print("left click")
             
@@ -530,19 +542,20 @@ def gameloop():
                         del(pinned_pieces[i-change])
                         del(pin_ray_squares[i-change])
                         
-                        
             # if your move            
             if turn == chosen_side:
                 #your move code
                 
+                
                 if turn == "white":
-                    
                     if click_coord in white_locations:
                         selected_piece = white_locations.index(click_coord)
                         moves = find_moves(white_pieces, white_locations, turn)[selected_piece]
-                        selection_animation(white_locations, selected_piece)
+                        print("white pieces", white_pieces, "white_locations", white_locations)
+                        print("moves1", moves)
                         
-                    elif click_coord in moves and selected_piece != 65:
+                        
+                    if click_coord in moves and selected_piece != 65:
                         white_locations[selected_piece] = click_coord
                         white_moved[selected_piece] = True
                         
@@ -554,15 +567,18 @@ def gameloop():
                             black_pieces.pop(black_piece)
                             black_locations.pop(black_piece)
                             black_moved.pop(black_piece)
-                            
+                        turn = "black"
+                        turn_count+=1
+                        moves = []
+                        selected_piece = 65
+                
+                
                 else:
-                    
                     if click_coord in black_locations:
                         selected_piece = black_locations.index(click_coord)
                         moves = find_moves(black_pieces, black_locations, turn)[selected_piece]
-                        selection_animation(black_locations, selected_piece)
                         
-                    elif click_coord in moves and selected_piece != 65:
+                    if click_coord in moves and selected_piece != 65:
                         black_locations[selected_piece] = click_coord
                         black_moved[selected_piece] = True
                         
@@ -574,12 +590,15 @@ def gameloop():
                             white_pieces.pop(white_piece)
                             white_locations.pop(white_piece)
                             white_moved.pop(white_piece)
-                    
+                        turn = "white"
+                        turn_count+=1
+                        moves = []
+                        selected_piece = 65
             
             
             # if engine move
             else:
-                if turn == "white":
+                if chosen_side == "black":
                     move = get_best_move(white_pieces, white_locations, turn)
                     #sets the computer's selected piece's location as the new one
                     
@@ -596,14 +615,18 @@ def gameloop():
                         black_pieces.pop(black_piece)
                         black_locations.pop(black_piece)
                         black_moved.pop(black_piece)
-                        
+                    turn = "black"
+                    turn_count+=1
                     
                     
                 else:
                     move = get_best_move(black_pieces, black_locations, turn)
-                                        #sets the computer's selected piece's location as the new one
-                    black_locations[black_locations.index(move[0])] = move[1]
-                    black_moved[move[0]] = True
+                    #sets the computer's selected piece's location as the new one
+                    
+                    #where selected piece currently is
+                    current_location = black_locations.index(move[0])
+                    black_locations[current_location] = move[1]
+                    black_moved[current_location] = True
                     #if its a take
                     if move[1] in white_locations:
                         white_piece = white_locations.index(move[1])
@@ -612,7 +635,11 @@ def gameloop():
                         white_pieces.pop(black_piece)
                         white_locations.pop(black_piece)
                         white_moved.pop(black_piece)
+                    turn = "white"
+                    turn_count+=1
                 # //TODO do the stuff so the "best move" gets played
+                moves = []
+                
                 
 
 
