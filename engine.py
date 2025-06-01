@@ -56,6 +56,8 @@ def get_best_move(pieces, locations, turn):
     returns a list of 2 coords
     the first one is the moved pieces current location
     the second one is the destination
+    The flipin foresight my days. Perfect for PC move indicator
+    Also, just very helpful in general (especially for unambiguous move notation later on maybe? (i.e. exd5))
     """
     
 

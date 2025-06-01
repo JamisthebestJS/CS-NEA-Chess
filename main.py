@@ -145,6 +145,12 @@ moves = []
 taken_by_player = []
 taken_by_computer = []
 
+#this is for indicating the computer's move
+global old_location
+old_location = ()
+global computer_selected_piece
+computer_selected_piece = ""
+
 
 def menu():
     
@@ -376,7 +382,10 @@ def draw_pieces():
         #selecting animation
         if chosen_side == "white":
             if selected_piece == i:
-                selection_animation(white_render_locations, selected_piece)
+                selection_animation(white_render_locations[i])
+        else:
+            if computer_selected_piece == i:
+                computer_move_indicator(old_location, white_render_locations[i])
     
     black_render_locations = rendering_coords(black_locations)
     #black pieces
@@ -387,15 +396,34 @@ def draw_pieces():
             screen.blit(scaled_black_pawn,(x_offset + ((black_render_locations[i][0]+0.175) * board_size/8), y_offset + (black_render_locations[i][1]+0.2) * board_size/8))
         else:
             screen.blit(scaled_black_images[index],(x_offset + ((black_render_locations[i][0]+0.1) * board_size/8), y_offset + (black_render_locations[i][1]+0.1) * board_size/8))
+            
         if chosen_side == "black":
             if selected_piece == i:
-                selection_animation(black_render_locations, selected_piece)
-            
-
+                selection_animation(black_render_locations[i])
+        else:
+            if computer_selected_piece == i:
+                computer_move_indicator(old_location, black_render_locations[i])
+     
+     
 #draw square outline around selected piece
-def selection_animation(locations, i):
+def selection_animation(location):
     #selecting "animation"
-    pygame.draw.rect(screen, 'green', [x_offset + (locations[i][0] * piece_size*5/4 + 1), y_offset + (locations[i][1] * piece_size*5/4 + 1), piece_size*5/4, piece_size*5/4], 2)
+    pygame.draw.rect(screen, 'green', [x_offset + (location[0] * piece_size*5/4 + 1), y_offset + (location[1] * piece_size*5/4 + 1), piece_size*5/4, piece_size*5/4], 2)
+
+
+#draw square outline around the computer's piece's old and new locations (suggested by user 20:20 01/06/2025)
+def computer_move_indicator(old_location, new_location):
+    #should sraw a red square around the old location and the new one
+    #perhaps yellow around old one, and red around new one. I'll experiment a little
+    if chosen_side == "white":
+        #if board flip, old_location is rendered vertically flipped
+        render_old_location = (old_location[0], 7 - old_location[1])
+    else:
+        render_old_location = old_location
+    
+    pygame.draw.rect(screen, 'orange', [x_offset + (render_old_location[0] * piece_size*5/4 + 1), y_offset + (render_old_location[1] * piece_size*5/4 + 1), piece_size*5/4, piece_size*5/4], 2)
+    pygame.draw.rect(screen, 'red', [x_offset + (new_location[0] * piece_size*5/4 + 1), y_offset + (new_location[1] * piece_size*5/4 + 1), piece_size*5/4, piece_size*5/4], 2)
+    return 0
 
 #general bits and bobs or something
 def play_UI():
@@ -488,7 +516,7 @@ def rendering_coords(locations):
 black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
-    global run, moves, selected_piece, turn_count, turn
+    global run, moves, selected_piece, turn_count, turn, computer_selected_piece, old_location
     if run:       
         #draw everything
         screen.fill('dark gray')
@@ -512,9 +540,6 @@ def gameloop():
         
         #if left click
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # //TODO get this to get the right coords, if the board is flipped.
-            # //FIXME ^^
-            #pixel clicked on window // 100 => square clicked on
             x_coord = int((event.pos[0] - x_offset) // (piece_size * 5/4))
             y_coord = int((event.pos[1] - y_offset) // (piece_size * 5/4))
             if chosen_side == "white":
@@ -532,6 +557,7 @@ def gameloop():
                         
             #if its been more than a turn since pinned, reset pinned pieces, and will recheck for them (before recheck, its reset)
             if pinned_pieces != []:
+                # //FIXME this does not work I dont think
                 print("turn count", turn_count, "\n pinned_pieces", pinned_pieces, "\n pin_ray_squares", pin_ray_squares)
                 #should remove pinned pieces and pin_ray_squares from 2 turn_counts ago (i.e. if white pins, then it should remove when its white turn again)
                 change = 0
@@ -541,21 +567,18 @@ def gameloop():
                         change += 1 #finds how many items have been deleted, so can account for index changes
                         del(pinned_pieces[i-change])
                         del(pin_ray_squares[i-change])
-                        
+              
             # if your move            
             if turn == chosen_side:
-                #your move code
-                
-                
                 if turn == "white":
                     if click_coord in white_locations:
                         selected_piece = white_locations.index(click_coord)
                         moves = find_moves(white_pieces, white_locations, turn)[selected_piece]
-                        print("white pieces", white_pieces, "white_locations", white_locations)
-                        print("moves1", moves)
-                        
                         
                     if click_coord in moves and selected_piece != 65:
+                        #if you move, it stops showing the computers old move
+                        computer_selected_piece = 65
+                        
                         white_locations[selected_piece] = click_coord
                         white_moved[selected_piece] = True
                         
@@ -571,7 +594,6 @@ def gameloop():
                         turn_count+=1
                         moves = []
                         selected_piece = 65
-                
                 
                 else:
                     if click_coord in black_locations:
@@ -599,17 +621,21 @@ def gameloop():
             # if engine move
             else:
                 if chosen_side == "black":
-                    move = get_best_move(white_pieces, white_locations, turn)
+                    computer_move = get_best_move(white_pieces, white_locations, turn)
                     #sets the computer's selected piece's location as the new one
                     
                     #where selected piece is currently
-                    current_location = white_locations.index(move[0])
+                    current_location_index = white_locations.index(computer_move[0])
+                    #rendering purposes
+                    old_location = computer_move[0]
+                    computer_selected_piece = current_location_index
                     
-                    white_locations[current_location] = move[1]
-                    white_moved[current_location] = True
+                    
+                    white_locations[current_location_index] = computer_move[1]
+                    white_moved[current_location_index] = True
                     #if its a take
-                    if move[1] in black_locations:
-                        black_piece = black_locations.index(move[1])
+                    if computer_move[1] in black_locations:
+                        black_piece = black_locations.index(computer_move[1])
                         taken_by_computer.append(black_pieces[black_piece])
                         
                         black_pieces.pop(black_piece)
@@ -618,29 +644,31 @@ def gameloop():
                     turn = "black"
                     turn_count+=1
                     
-                    
                 else:
-                    move = get_best_move(black_pieces, black_locations, turn)
+                    computer_move = get_best_move(black_pieces, black_locations, turn)
                     #sets the computer's selected piece's location as the new one
                     
+                    
                     #where selected piece currently is
-                    current_location = black_locations.index(move[0])
-                    black_locations[current_location] = move[1]
-                    black_moved[current_location] = True
+                    current_location_index = black_locations.index(computer_move[0])
+                    #this is for rendering purposes
+                    old_location = computer_move[0]
+                    computer_selected_piece = current_location_index
+                    
+                    black_locations[current_location_index] = computer_move[1]
+                    black_moved[current_location_index] = True
                     #if its a take
-                    if move[1] in white_locations:
-                        white_piece = white_locations.index(move[1])
-                        taken_by_computer.append(black_pieces[black_piece])
+                    if computer_move[1] in white_locations:
+                        white_piece = white_locations.index(computer_move[1])
+                        taken_by_computer.append(white_pieces[white_piece])
                         
-                        white_pieces.pop(black_piece)
-                        white_locations.pop(black_piece)
-                        white_moved.pop(black_piece)
+                        white_pieces.pop(white_piece)
+                        white_locations.pop(white_piece)
+                        white_moved.pop(white_piece)
                     turn = "white"
                     turn_count+=1
                 # //TODO do the stuff so the "best move" gets played
                 moves = []
-                
-                
 
 
 def run_loop():
@@ -649,10 +677,12 @@ def run_loop():
         menu()
         
         if get_menu_button_presses() == "start":
+            
             # here because this is needed before board, pieees are drawn, and only needs to be called once per "start" click, potentially less in future
             global chosen_side
             chosen_side = choose_side("random")
             print(chosen_side)
+            
             #king and queen swap (if playing as white, since then the board needs to be "turned")
             king_queen_swap()
             
@@ -668,6 +698,7 @@ def run_loop():
                         screen = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
                         
                 gameloop()
+                
                 
         elif get_menu_button_presses() == "options":
             # //TODO options menu

@@ -1,5 +1,13 @@
 import pygame
 
+
+# //TODO for pins, queens need to have a check on which direction is pinning
+# one way may be to create a list of piece types that pin
+# they would have corresponding indices to the ray_squares
+# and then could check the same index for the pieces and so checl like that
+# queens would then be completely ignored, as it is rooka dn bishop code
+
+
 all_locations = []
 black_in_check = False
 white_in_check = False
@@ -42,20 +50,18 @@ white_moved = [False, False, False, False, False, False, False, False,
 
 def check_pinned(check_location):
     """
-    if piece is pinned, returns the piece that is pinning it
-    if more than 1 piece pinning, returns (9,9) 
+    if piece is pinned, returns the location of the piece that is pinning it
+    if more than 1 piece pinning, returns (9,9)
     if not pinned, returns ()
     """
-    pinned = False
-    pinning_pieces = 0
-    pinning_piece = ""
+    pinning_pieces_count = 0
+    pinning_piece = ()
     for i in range(len(pinned_pieces)):
         if pinned_pieces[i][0] == check_location:
-            pinned = True
-            pinning_pieces+=1  #finds number of pieces pinning
+            pinning_pieces_count+=1  #finds number of pieces pinning
             pinning_piece = pinned_pieces[i][1] #finds pinning piece
             
-    if pinning_pieces > 1:
+    if pinning_pieces_count > 1:
         #if more than 1 piece pinning, it CANNOT move (special case)
         return (9,9)
     else:
@@ -69,10 +75,12 @@ def slider_move_loop(location, colour,moves,x,y):
         opposite_colour_locations = black_locations
         same_colour_locations = white_locations
         opposite_pieces = black_pieces
+        opposite_in_check = black_in_check
     else:
         same_colour_locations = black_locations
         opposite_colour_locations = white_locations
         opposite_pieces = white_pieces
+        opposite_in_check = white_in_check
     
     #checks if empty, if not, stops checking that direction
     #then checks if same colour, if not, then taking it is possible
@@ -105,7 +113,7 @@ def slider_move_loop(location, colour,moves,x,y):
                 if (location[0] + (chain * x), location[1] + (chain * y)) == opposite_colour_locations[opposite_pieces.index("king")]:
                         #if check
                         if first == False:
-                            in_check = True
+                            opposite_in_check = True
                             in_check_by.append((location[0], location[1], turn_count))
                             print("check")
                         
@@ -144,22 +152,33 @@ def rook_moves(location, colour):
         same_colour_locations = black_locations
         opposite_colour_locations = white_locations
         opposite_pieces = white_pieces
+        
     #if pinned
     pinned_by = check_pinned(location)
     if pinned_by == (9,9): #if pinned by 2+ pieces
         #cannot move
-        return moves
+        return []
     elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves R
-        # it also only needs to check if *itself* is pinned
-        for i in range(len(pinned_pieces)):
-            pinning_piece = pinned_pieces[i][1]
-            if opposite_pieces(opposite_colour_locations.index(pinning_piece)) == "rook":
-                #moves between pinned and pinning
-                pass
-                #dont need to keep looping after finding the right pinning piece
-                break
+        print(pinned_by)
+        print(opposite_colour_locations)
+        pinning_piece_type = opposite_pieces[opposite_colour_locations.index(pinned_by)]
         
+        if  pinning_piece_type == "rook" or pinning_piece_type == "queen":
+            #moves = pinning piece's ray squares
+            for i in pin_ray_squares:
+                #checking through ray_squares to find the pinning piece's ray_squares
+                #if the currently checked set of ray_squares is by the piece in same location as pinning piece
+                if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
+                        applicable_ray_squares = i
+                        #cant move to its current location
+                        i.pop(location)
+                        return i
+            
+        else:
+            #no possible moves
+            #pinned by bishop, so no ray_squares for the piece to move on to
+            return []
+            
     #loops through right, left, down up:
     #in that order, since then the evens are increases, oddds are decreases
     for i in range(4):
@@ -188,20 +207,42 @@ def rook_moves(location, colour):
 #check bishop moves
 def bishop_moves(location, colour):
     moves = []
-    #this is so that pin_ray_squares is only added for this piece if it is pinning something
+    if colour == "white":
+        opposite_colour_locations = black_locations
+        same_colour_locations = white_locations
+        opposite_pieces = black_pieces
+    else:
+        same_colour_locations = black_locations
+        opposite_colour_locations = white_locations
+        opposite_pieces = white_pieces
+
 
    #if pinned
     pinned_by = check_pinned(location)
     if pinned_by == (9,9): #if pinned by 2+ pieces
         #cannot move
-        return moves
+        return []
     elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves B
-        #need to find moves that are also in the corresponding pin_ray_squares (of pinning piece)
-        # find pin_ray_squares
-        #check which direction the piece is pinned in
-        #some shenanigans and can basically add pin_ray_squares to moves (if same piece or queen
-        pass
+        print(pinned_by)
+        print(opposite_colour_locations)
+        pinning_piece_type = opposite_pieces[opposite_colour_locations.index(pinned_by)]
+        
+        if  pinning_piece_type == "bishop" or pinning_piece_type == "queen":
+            #moves = pinning piece's ray squares
+            for i in pin_ray_squares:
+                #checking through ray_squares to find the pinning piece's ray_squares
+                #if the currently checked set of ray_squares is by the piece in same location as pinning piece
+                if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
+                        applicable_ray_squares = i
+                        #cant move to its current location
+                        i.pop(location)
+                        return i
+            
+        else:
+            #no possible moves
+            #pinned by bishop, so no ray_squares for the piece to move on to
+            return []
+        
     #loops through a,b,c,d:
     #a = 1,1 b = -1,-1, c = 1,-1 , d = -1,1
     #in that order, since then the evens are increases, odds are decreases
@@ -232,7 +273,7 @@ def knight_moves(location, colour):
     moves = []
     #if pinned
     pinned_by = check_pinned(location)
-    if pinned_by == (): #if pinned
+    if pinned_by != (): #if pinned
         #knights cannot move if pinned, since cannot move onto its own pin_ray_squares
        return moves
 
@@ -257,7 +298,7 @@ def knight_moves(location, colour):
                 if opposite_pieces.index("king") == opposite_colour.index((location[0]+x_counts[i], location[1]+y_counts[i])):
                     in_check = True
                     in_check_by.append((location[0], location[1], turn_count))
-                    print("check")          
+                    print("check")
     return moves
 
 #find queen moves
@@ -305,32 +346,43 @@ def king_moves(location, colour):
 def pawn_moves(location, colour):
     moves = []
     max = 1
-   #if pinned
-    pinned_by = check_pinned(location)
-    if pinned_by == (9,9): #if pinned by 2+ pieces
-        #cannot move
-        return moves
-    elif pinned_by != (): #if pinned by 1 piece
-        # //TODO get while_pinned moves P
-        #need to find moves that are also in the corresponding pin_ray_squares (of pinning piece)
-        # find pin_ray_squares
-        #check which direction the piece is pinned in
-        #some shenanigans and can basically add pin_ray_squares to moves (if same piece or queen
-        pass
-    two_possible = True
+    # //TODO fix pawns being able to hop over pieces on their first move
     if colour == "white":
         opposite_colour_locations = black_locations ; same_colour_locations = white_locations ; direction = 1
+        opposite_pieces = black_pieces
         if location in white_locations:
             pawn_index = white_locations.index(location)
             if white_moved[pawn_index] == False:
                 max = 2
     else:
         same_colour_locations = black_locations ; opposite_colour_locations = white_locations ; direction = -1
+        opposite_pieces = white_pieces
         if location in black_locations:
             pawn_index = black_locations.index(location)
             if black_moved[pawn_index] == False:
                 max = 2
+                
+   #if pinned
+    pinned_by = check_pinned(location)
+    if pinned_by == (9,9): #if pinned by 2+ pieces
+        #cannot move
+        return []
+    elif pinned_by != (): #if pinned by 1 piece
+        print(pinned_by)
+        print(opposite_colour_locations)
+        pinning_piece_type = opposite_pieces[opposite_colour_locations.index(pinned_by)]
         
+        if  pinning_piece_type == "rook" or pinning_piece_type == "queen":
+            #moves = pinning piece's ray squares
+            for i in pin_ray_squares:
+                #checking through ray_squares to find the pinning piece's ray_squares
+                #if the currently checked set of ray_squares is by the piece in same location as pinning piece
+                if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
+                        applicable_ray_squares = i
+                        #cant move to its current location
+                        applicable_ray_squares.remove(location)
+                        return i
+
     # checks 1 in front (and 2 if not moved). 
     #can only move 2 if can move 1, so, you dont loop through to check 2, if 1 isnt possible
     i = 0
