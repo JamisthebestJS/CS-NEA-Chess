@@ -171,7 +171,7 @@ def rook_moves(location, colour):
                 if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
                         applicable_ray_squares = i
                         #cant move to its current location
-                        i.pop(location)
+                        #i.pop(location)
                         return i
             
         else:
@@ -235,7 +235,7 @@ def bishop_moves(location, colour):
                 if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
                         applicable_ray_squares = i
                         #cant move to its current location
-                        i.pop(location)
+                        #i.pop(location)
                         return i
             
         else:
@@ -380,6 +380,11 @@ def pawn_moves(location, colour):
                 if i[0] == opposite_colour_locations[opposite_colour_locations.index(pinned_by)]:
                         applicable_ray_squares = i
                         #cant move to its current location
+                        print("RQ", applicable_ray_squares)
+                        print("location", location)
+                        #//FIXME basically, here isnt the issue. The issue is that RQ isnt updated frequently enough, so here, its trying to remove its position
+                        #when its already been removed, but it should have to do it every turn
+                        #as PRQ should be updated every turn (and so add the pinned piece's location to PRQ)
                         applicable_ray_squares.remove(location)
                         return i
 

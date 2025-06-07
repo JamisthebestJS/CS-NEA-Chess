@@ -75,3 +75,4 @@ def get_best_move(pieces, locations, turn):
     best_move.insert(0, locations[index])
     print(best_move)
     return best_move
+

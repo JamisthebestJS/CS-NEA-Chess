@@ -76,6 +76,7 @@ For making better, allow multiple look-ahead moves. 2 is 4x better than 1, 3 is 
 pygame.init()
 
 screen = pygame.display.set_mode([WIDTH, HEIGHT], pygame.RESIZABLE)
+
 pygame.display.set_caption('Time to do the procedure')
 kramnic = pygame.image.load('assets/images/Kramnic.png')
 kramnic2 = pygame.image.load('assets/images/kramnic2.jpg')
@@ -125,14 +126,12 @@ white_pawn = pygame.image.load('assets/images/white pawn.png')
 #white_pawn = pygame.transform.scale(white_pawn, (200, 200))
 small_white_pawn = pygame.transform.scale(white_pawn, (100, 100))
 white_images = [white_pawn, white_queen, white_king, white_knight, white_rook, white_bishop]
-white_promotions = ['bishop', 'knight', 'rook', 'queen']
 
 small_white_images = [small_white_pawn, small_white_queen, small_white_king, small_white_knight,
                       small_white_rook, small_white_bishop]
 black_images = [black_pawn, black_queen, black_king, black_knight, black_rook, black_bishop]
 small_black_images = [small_black_pawn, small_black_queen, small_black_king, small_black_knight,
                       small_black_rook, small_black_bishop]
-black_promotions = ['bishop', 'knight', 'rook', 'queen']
 
 piece_list = ['pawn', 'queen', 'king', 'knight', 'rook', 'bishop']
 
@@ -145,11 +144,15 @@ moves = []
 taken_by_player = []
 taken_by_computer = []
 
+global promoting_piece
+
 #this is for indicating the computer's move
 global old_location
 old_location = ()
 global computer_selected_piece
 computer_selected_piece = ""
+
+promotion = False
 
 
 def menu():
@@ -187,8 +190,6 @@ def menu():
     #fonts
     #must be here despite performance due to having to be able to resize the window
     #cannot resize fonts, so have to recreate them each time
-    font = pygame.font.Font('freesansbold.ttf',(height+width)//64)
-    big_font = pygame.font.Font('freesansbold.ttf',(height+width)//32)
     global coordinate_font
     coordinate_font = pygame.font.Font('freesansbold.ttf',(height+width)//96) #get font for the A-B, 1-8 on the sides
     menu_font = pygame.font.Font('freesansbold.ttf',height//14) #get font for the menu
@@ -268,19 +269,18 @@ def draw_board():
     global y_offset
     
     #to ensure gameboard is square
-    b = min(width, height)/5
-    a=b
-    board_size = min(width, height) - a  #=min(width, height)*4/5
+    vert = min(width, height)/5
+    hori = vert
+    board_size = min(width, height) - hori  #=min(width, height)*4/5
     if width > height:
         width_greater = True
         height_greater = False
-        a = width - (board_size)
+        hori = width - (board_size)
     elif height > width:
         height_greater = True
         width_greater = False
-        b = height - (board_size)
+        vert = height - (board_size)
     else:
-        same = True
         width_greater = False
         height_greater = False
     #pretty sure ^^ all works
@@ -292,37 +292,37 @@ def draw_board():
         board_drawing_constant = 1
     
     if width_greater:
-        x_offset = a/2
-        y_offset = b/2
+        x_offset = hori/2
+        y_offset = vert/2
         for i in range(16): #rows
             if i % 2 == board_drawing_constant:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2) * (board_size / 8)), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [(hori / 2) + ((j*2) * (board_size / 8)), (vert/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [(a / 2) + ((j*2 + 1) * (board_size / 8)), (b/2)+(2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [(hori / 2) + ((j*2 + 1) * (board_size / 8)), (vert/2)+(2*(i // 4)+1) * (board_size / 8), board_size / 8, board_size / 8 ])
             
                     
     elif height_greater:
         x_offset = board_size/40
-        y_offset = b/2
+        y_offset = vert/2
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (vert/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (vert/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
     else:
         x_offset = board_size/40
-        y_offset = b/2
+        y_offset = vert/2
         for i in range(16):
             if i % 2 == 0:
                 for j in range(4): #squares
-                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (b/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2) * (board_size / 8), (vert/2)+(2*(i // 4) * (board_size / 8)), board_size / 8, board_size / 8 ])
             else:
                 for j in range(4):
-                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (b/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
+                    pygame.draw.rect(screen, 'light gray', [x_offset + (j*2 + 1) * (board_size / 8), (vert/2)+((2*(i // 4)+1) * (board_size / 8)), board_size / 8, board_size / 8 ])
             
     #draw margin lines
            
@@ -387,8 +387,10 @@ def draw_pieces():
             if computer_selected_piece == i:
                 computer_move_indicator(old_location, white_render_locations[i])
     
-    black_render_locations = rendering_coords(black_locations)
+            
+                
     #black pieces
+    black_render_locations = rendering_coords(black_locations)
     for i in range(len(black_pieces)):
         index = piece_list.index(black_pieces[i])
         if black_pieces[i] == "pawn":
@@ -403,6 +405,25 @@ def draw_pieces():
         else:
             if computer_selected_piece == i:
                 computer_move_indicator(old_location, black_render_locations[i])
+    
+    
+    
+    #piece rendering for promotion menu
+    if promotion == True:
+        if chosen_side == "black":
+            draw_promotion()
+            screen.blit(scaled_black_knight, (x_offset + ((3.1) * board_size/8), y_offset + (4.1) * board_size/8))
+            screen.blit(scaled_black_bishop, (x_offset + ((4.1) * board_size/8), y_offset + (4.1) * board_size/8))
+            screen.blit(scaled_black_rook, (x_offset + ((3.1) * board_size/8), y_offset + (5.1) * board_size/8))
+            screen.blit(scaled_black_queen, (x_offset + ((4.1) * board_size/8), y_offset + (5.1) * board_size/8))
+        else:
+            draw_promotion()
+            screen.blit(scaled_white_knight, (x_offset + ((3.1) * board_size/8), y_offset + (4.1) * board_size/8))
+            screen.blit(scaled_white_bishop, (x_offset + ((4.1) * board_size/8), y_offset + (4.1) * board_size/8))
+            screen.blit(scaled_white_rook, (x_offset + ((3.1) * board_size/8), y_offset + (5.1) * board_size/8))
+            screen.blit(scaled_white_queen, (x_offset + ((4.1) * board_size/8), y_offset + (5.1) * board_size/8))
+            
+        
      
      
 #draw square outline around selected piece
@@ -436,7 +457,32 @@ def draw_material():
     #this should draw the material taken by each player, in a list, with the total material worth
     #it should be draw on the correct side (above/below)
     return 0    
-   
+
+#drawing promotion menu
+def draw_promotion():
+
+    pygame.draw.rect(screen, 'light green', [x_offset + piece_size*15/4, y_offset + piece_size*15/4, piece_size*5/2, piece_size*15/4])
+    pygame.draw.rect(screen, 'dark green', [x_offset + piece_size*15/4, y_offset + piece_size*15/4, piece_size*5/2, piece_size*15/4], 5)
+    
+    pygame.draw.line(screen, 'dark green', (x_offset + piece_size*5, y_offset + piece_size*5), (x_offset + piece_size*5, y_offset + piece_size*15/2), 3) #vertical line
+    pygame.draw.line(screen, 'dark green', (x_offset + piece_size*15/4, y_offset + piece_size*25/4), (x_offset + piece_size*25/4, y_offset + piece_size*25/4), 3) #horizontal line
+    pygame.draw.line(screen, 'dark green', (x_offset + piece_size*15/4, y_offset + piece_size*5), (x_offset + piece_size*25/4, y_offset + piece_size*5), 5) # horizontal lin
+    
+    height
+    width
+    
+    average_h_w = int(height + width)//2
+    
+    font = pygame.font.Font('freesansbold.ttf',(average_h_w)//35)
+    promotion_title_text = font.render('promotion', False, (0, 0, 0))
+    
+    screen.blit(promotion_title_text, (x_offset + piece_size*15/4 + promotion_title_text.get_width()/5, y_offset + piece_size*15/4 + promotion_title_text.get_height()/2))
+    
+    half_font = pygame.font.Font('freesansbold.ttf',(average_h_w)//50)
+    promotion_prompt_text = half_font.render('(select a piece: )', False, (0, 0, 0))
+    screen.blit(promotion_prompt_text, (x_offset + piece_size*15/4 + promotion_prompt_text.get_width()/7, y_offset + piece_size*35/8 + promotion_prompt_text.get_height()*4/5))
+
+
 #drawing valid movses
 def draw_legal_moves(moves):
     global piece_size
@@ -517,6 +563,7 @@ black_moves = find_moves(black_pieces, black_locations, "black")
 white_moves = find_moves(white_pieces, white_locations, "white")
 def gameloop():
     global run, moves, selected_piece, turn_count, turn, computer_selected_piece, old_location
+    global promotion, promoting_piece
     if run:       
         #draw everything
         screen.fill('dark gray')
@@ -525,14 +572,17 @@ def gameloop():
         draw_coordinates()
         draw_material()
         
+        
+        
         evaluate_position(white_locations, black_locations, white_pieces, black_pieces) #eval is always same, no matter which side you play (i.e. white better ==>  >0  & vice versa)
 
-    ##print("before event loop")
-    #events
+        ##print("before event loop")
+        #events
         if selected_piece != 65:
             draw_legal_moves(moves)
         
     for event in pygame.event.get():
+        
         
         if event.type == pygame.QUIT:
             run = False
@@ -542,12 +592,46 @@ def gameloop():
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             x_coord = int((event.pos[0] - x_offset) // (piece_size * 5/4))
             y_coord = int((event.pos[1] - y_offset) // (piece_size * 5/4))
+            #board_y_coord is used so that normal y_coord can be used for menus (specifically promotion)
+            #while still converting the y coord for piece selection (in click_coord)
             if chosen_side == "white":
-                y_coord = 7 - y_coord
-            click_coord = (x_coord, y_coord)
-            ##print("left click")
+                board_y_coord = 7 - y_coord
+            else:
+                board_y_coord = y_coord
+            click_coord = (x_coord, board_y_coord)
             
-            #check logic (and pinned pieces)
+            
+            if promotion == True:
+                #see which menu selection the mouse is over when click, if any
+                #depending on which one, do what needs doing (i.e. set the pawn to the right piece)
+                if 2 < x_coord < 5  and 3 < y_coord < 6:
+                    promotion = False
+                    print("reset promotion")
+                    if chosen_side == "white":
+                        pieces = white_pieces
+                    else:
+                        pieces = black_pieces
+                        
+                    if x_coord == 3:
+                        if y_coord == 4:
+                            #selected knight
+                            pieces[promoting_piece] = "knight"
+                        else:
+                            #selected rook
+                            pieces[promoting_piece] = "rook"
+                    else:
+                        if y_coord == 4:
+                            #selected bishop
+                            pieces[promoting_piece] = "bishop" 
+                        else:
+                            #selected queen
+                            pieces[promoting_piece] = "queen"
+                        
+                    
+                    
+                    
+            
+            #check logic
             global in_check
             if in_check == True:
                 print(in_check_by)
@@ -556,7 +640,7 @@ def gameloop():
                     in_check_by = []
                         
             #if its been more than a turn since pinned, reset pinned pieces, and will recheck for them (before recheck, its reset)
-            if pinned_pieces != []:
+            if pinned_pieces != [] and promotion == False: # second bit because no moves while promotion = True, so no point doing this
                 # //FIXME this does not work I dont think
                 print("turn count", turn_count, "\n pinned_pieces", pinned_pieces, "\n pin_ray_squares", pin_ray_squares)
                 #should remove pinned pieces and pin_ray_squares from 2 turn_counts ago (i.e. if white pins, then it should remove when its white turn again)
@@ -568,8 +652,12 @@ def gameloop():
                         del(pinned_pieces[i-change])
                         del(pin_ray_squares[i-change])
               
-            # if your move            
-            if turn == chosen_side:
+              
+              
+              
+              
+            # if your move
+            if turn == chosen_side and promotion == False:
                 if turn == "white":
                     if click_coord in white_locations:
                         selected_piece = white_locations.index(click_coord)
@@ -577,11 +665,15 @@ def gameloop():
                         
                     if click_coord in moves and selected_piece != 65:
                         #if you move, it stops showing the computers old move
-                        computer_selected_piece = 65
                         
                         white_locations[selected_piece] = click_coord
                         white_moved[selected_piece] = True
+                        computer_selected_piece = 65
                         
+                        if white_pieces[selected_piece] == "pawn" and white_locations[selected_piece][1] == 7:
+                            promotion = True
+                            promoting_piece = selected_piece
+                       
                         if click_coord in black_locations:
                             black_piece = black_locations.index(click_coord)
                             #material taken is stored by player. The colour is figured during the rendering
@@ -594,7 +686,8 @@ def gameloop():
                         turn_count+=1
                         moves = []
                         selected_piece = 65
-                
+                        
+                                        
                 else:
                     if click_coord in black_locations:
                         selected_piece = black_locations.index(click_coord)
@@ -603,6 +696,11 @@ def gameloop():
                     if click_coord in moves and selected_piece != 65:
                         black_locations[selected_piece] = click_coord
                         black_moved[selected_piece] = True
+                        computer_selected_piece = 65
+                        
+                        if black_pieces[selected_piece] == "pawn" and black_locations[selected_piece][1] == 0:
+                            promotion = True
+                            promoting_piece = selected_piece
                         
                         if click_coord in white_locations:
                             white_piece = white_locations.index(click_coord)
@@ -619,7 +717,7 @@ def gameloop():
             
             
             # if engine move
-            else:
+            elif promotion == False:
                 if chosen_side == "black":
                     computer_move = get_best_move(white_pieces, white_locations, turn)
                     #sets the computer's selected piece's location as the new one
@@ -670,7 +768,6 @@ def gameloop():
                 # //TODO do the stuff so the "best move" gets played
                 moves = []
 
-
 def run_loop():
     global run
     while run:
@@ -712,3 +809,23 @@ def run_loop():
     pygame.quit()
 
 run_loop()
+
+
+"""
+im also thining right now that the promotion menu box is wayy too small
+Might need to do a proper pop up box honestly, like take up 4 squares of space + padding, and have decent sized piece images to select the one you want.
+Maybe in the middle of the screen exactly to make it really obvious
+Like:
+
+|-----------------------------------------------|
+|                 PROMOTION                     |
+|              SELECT A PIECE:                  |
+|                                               |
+|   KNIGHT                      BISHOP          |
+|                                               |
+|   ROOK                        QUEEN           |
+|_______________________________________________|
+
+right in the middle of the screen, maybe even with some jazzy flashing border or smt
+
+"""
