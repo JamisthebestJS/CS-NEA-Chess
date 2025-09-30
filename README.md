@@ -9,3 +9,7 @@ However, the parts I have left are tough, having en passant, castling, stalemate
 
 Menu Finished (mostly)
 Some features (e.g. board flipping and *you* having a side are half way through implementation)
+
+
+NOTE
+This has been (maybe just temporarily) abandoned due to a change in my NEA project
